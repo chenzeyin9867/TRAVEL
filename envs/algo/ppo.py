@@ -13,6 +13,7 @@ class PPO():
                  num_mini_batch,
                  value_loss_coef,
                  entropy_coef,
+                 optimizer,
                  lr=None,
                  eps=None,
                  max_grad_norm=None,
@@ -30,8 +31,8 @@ class PPO():
         self.max_grad_norm = max_grad_norm
         self.use_clipped_value_loss = use_clipped_value_loss
 
-        self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
-
+        # self.optimizer = optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
+        self.optimizer = optimizer if optimizer else optim.Adam(actor_critic.parameters(), lr=lr, eps=eps)
     def update(self, rollouts, args):
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         advantages = (advantages - advantages.mean()) / (
@@ -94,7 +95,7 @@ class PPO():
         total_loss_epoch /= num_updates
 
         # compute the explained variance
-        explained_variance = (1 - torch.var(rollouts.returns - rollouts.value_preds)) / torch.var(rollouts.returns)
+        explained_variance = 1 - torch.var(rollouts.returns - rollouts.value_preds) / torch.var(rollouts.returns)
         
 
         return value_loss_epoch, action_loss_epoch, dist_entropy_epoch, total_loss_epoch, explained_variance.item()

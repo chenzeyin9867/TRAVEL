@@ -3,40 +3,53 @@ import time
 from tensorboardX import SummaryWriter
 import numpy as np
 import torch
-from a2c_ppo_acktr import algo, myutils
-from a2c_ppo_acktr.arguments import get_args
-from a2c_ppo_acktr.envs_general import  PassiveHapticsEnv
-from a2c_ppo_acktr.model import Policy
-from a2c_ppo_acktr.storage import RolloutStorage
-from evaluation import PassiveHapticRdwEvaluate
-from a2c_ppo_acktr.distributions import FixedNormal
+from torch._C import layout
+import torch.optim as optim
+from envs import algo, myutils
+from envs.arguments import get_args
+from envs.envs_general import  PassiveHapticsEnv
+from envs.model import Policy
+from envs.storage import RolloutStorage
+from evaluation import phrlEvaluate
+from envs.distributions import FixedNormal
+from tqdm import trange
+
 
 # OBS_NORM = False
 def main():
     args = get_args()
-    print(args)
+    params = args.__dict__
     writer1 = SummaryWriter('runs/' + args.env_name)
     if not os.path.exists('runs/' + args.env_name):
         os.makedirs('runs/' + args.env_name)
+    
+    # Experimental settings
     torch.manual_seed(args.seed)
-    flag = 0
-    R_none = 0
-    Dis_none = 0
-
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
+    
+    # Debug infos
     print(device)
-
-    envs = PassiveHapticsEnv(args.gamma, 10, eval=False)
+    print(args)
+    
+    # Instance the env, training batch
+    envs = PassiveHapticsEnv(args.gamma, args.stack_frame, eval=False, path=args.data)
+    
+    # Loading the actor-critc model
     actor_critic = Policy(
         envs.observation_space.shape,
-        envs.action_space)
-
-    if args.load_epoch != 0:
-        actor_critic = \
-            torch.load('./trained_models/' + args.env_name + '/%d.pth' % args.load_epoch)
-        print("Loading the " + args.env_name + '/_%d.pt' % args.load_epoch + ' to train')
+        envs.action_space,
+        args.net_width)
+    optimizer = optim.Adam(actor_critic.parameters(), lr=args.lr) 
     actor_critic.to(device)
+    
+    if args.load_epoch != 0:
+        ckpt = torch.load(os.path.join('./trained_modes', args.env_name + "/%d.pth" % (args.load_epoch)))
+        actor_critic.load_state_dict(ckpt["model_state_dict"])
+        optimizer.load_state_dict(ckpt["optimizer_state_dict"])
+        # actor_critic = torch.load('./trained_models/' + args.env_name + '/%d.pth' % args.load_epoch)
+        print("Loading the " + args.env_name + '/_%d.pt' % args.load_epoch + ' to train')
+        
     agent = algo.PPO(
         actor_critic,
         args.clip_param,
@@ -44,6 +57,7 @@ def main():
         args.num_mini_batch,
         args.value_loss_coef,
         args.entropy_coef,
+        optimizer,
         lr=args.lr,
         eps=args.eps,
         max_grad_norm=args.max_grad_norm)
@@ -57,24 +71,20 @@ def main():
     t_start = time.time()
     num_updates = int(args.num_env_steps) // args.num_steps // args.num_processes
 
-
-    min_median = 10000
-    min_median_epoch = 0
-    for j in range(args.load_epoch, num_updates):
+    for j in trange(args.load_epoch, num_updates):
 
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
             myutils.update_linear_schedule(
                 agent.optimizer, j, num_updates, args.lr)
 
-        for step in range(args.num_steps):
+        for step in trange(args.num_steps):
             # Sample actions
             with torch.no_grad():
                 value, action_mean, action_std = actor_critic.act(rollouts.obs[step])
-                # print(action_std)
                 dist = FixedNormal(action_mean, action_std)
                 action = dist.sample()
-                # action = torch.clamp(action, -1.0, 1.0)
+                action = torch.clamp(action, -1.0, 1.0)
                 action_log_prob = dist.log_probs(action)
 
             # Obser reward and next obs
@@ -96,7 +106,7 @@ def main():
 
         rollouts.after_update()
 
-        # save for every interval-th episode or for the last epoch
+        # save for every interval episode or for the last epoch
         if (j % args.save_interval == 0
                 or j == num_updates - 1) and args.save_dir != "":
             save_path = os.path.join(args.save_dir, args.env_name)
@@ -104,53 +114,75 @@ def main():
                 os.makedirs(save_path)
             except OSError:
                 pass
-
-            torch.save(actor_critic, os.path.join(save_path,  "%d.pth" % j))
+            path =  os.path.join(save_path,  "%d.pth" % j)
+            torch.save(
+                {
+                    'global_step':                  j,
+                    'model_state_dict':             actor_critic.state_dict(),
+                    'optimizer_state_dict':         agent.optimizer.state_dict(),
+                }, path
+            )
+            print("Save checkpoint ", path)
 
         num = 100
-        mid = int(num/2)
-        l = int(num/4)
-        r = int(num*3/4)
+        if j == args.load_epoch:
+                r_none, pde_, poe_, collide_, _, _, _, _, _, _  = phrlEvaluate(None, j, **params)
         if j % args.log_interval == 0:
-            r_eval, r_none, distance, disnosrl, angle_srl, angle_none, flag, m1, m2, std1, std2, std3, gt, gr, gc, c, c_ = \
-                PassiveHapticRdwEvaluate(actor_critic, args.gamma, 10, j, flag, args.env_name, num=num)
+            r_eval, pde, poe, collide, std1, std2, std3, gt, gr, gc = phrlEvaluate(actor_critic, j, **params)
 
-            end = time.time()
-            if R_none == 0:
-                R_none = r_none
-                Dis_none = disnosrl
-            if min_median > m1[mid]:
-                min_median = m1[mid]
-                min_median_epoch = j
             print(args.env_name)
             print(
                 "Epoch_%d/%d" % (j, num_updates), 
-                "\te_loss:{:.4f}\t"
-                "|r_phrl:{:.2f} |r_none:{:.2f} |dis_phrl:{:.2f} |dis_none:{:.2f} "
-                "|θ_phrl:{:.2f} |θ_none:{:.2f}"
-                .format(entropy_loss,
-                 r_eval.item(), R_none.item(), distance, Dis_none, 
-                 angle_srl.item(), angle_none.item()))
+                "|r_phrl:{:.2f} |r_none:{:.2f} |pde_phrl:{:.2f} |pde_none:{:.2f} "
+                "|poe_phrl:{:.2f} |poe_none:{:.2f}"
+                .format(entropy_loss, r_eval.item(), r_none.item(), pde, pde_, poe, poe_))
             print("std:{:.3f} {:.3f} {:.3f}" 
                   "|gt:{:.2f}|gr:{:.2f} |gc:{:.2f}\t|".
                   format(np.mean(std1), np.mean(std2), np.mean(std3), 
                   np.mean(gt).item(), np.mean(gr).item(), np.mean(gc).item()),
-                  "reset_phrl:", c, " reset_none:", c_,  "pde_phrl:{:.2f} |pde_none:{:.2f}"
-                  .format(m1[mid], m2[mid]),"min_median:{:.2f} |t:{:.2f} ".format(min_median, end - t_start)) 
+                  "reset_phrl:", collide, " reset_none:", collide_,  
+                  "\t|t:{:.2f} ".format(time.time() - t_start)) 
             t_start = time.time()
-        writer1.add_scalar('value_loss', value_loss, global_step=j)
-        writer1.add_scalar('actor_loss', action_loss, global_step=j)
+            
+            
+        # Handle the tensorboard 
+        writer1.add_scalar('Loss/value_loss', value_loss, global_step=j)
+        writer1.add_scalar('Loss/actor_loss', action_loss, global_step=j)
         writer1.add_scalar('entropy_loss', entropy_loss, global_step=j)
         writer1.add_scalar('total_loss', total_loss, global_step=j)
-        writer1.add_scalar('physical_distance_error', distance, global_step=j)
+        writer1.add_scalar('pde', pde, global_step=j)
+        writer1.add_scalar('poe', poe, global_step=j)
         writer1.add_scalar('phrl_reward', r_eval, global_step=j)
-        writer1.add_scalar('physical_angle_error', angle_srl, global_step=j)
-        writer1.add_scalar('median_distance_error', m1[mid], global_step=j)
+        
         writer1.add_scalar('gt', np.mean(gt).item(), global_step=j)
         writer1.add_scalar('gr', np.mean(gr).item(), global_step=j)
         writer1.add_scalar('gc', np.mean(gc).item(), global_step=j)
-        writer1.add_scalar('reset', c, global_step=j)
+        writer1.add_scalar('reset', collide, global_step=j)
         writer1.add_scalar("explained_var", explained_variance, global_step=j)
+        layout = {
+            'Loss':{
+                'v_loss': ['Multiline', ["Loss/value_loss"]],
+                # 'a_loss': action_loss,
+                # 'e_loss': entropy_loss,
+                # 't_loss': total_loss
+            },
+            # 'Metrics':{
+            #     'pde': pde,
+            #     'poe': poe,
+            #     'collide': collide,
+            #     'expained_var': explained_variance
+            # },
+            # 'var':{
+            #     'gt': gt,
+            #     'gc': gc,
+            #     'gr': gr,
+            #     'std_gt': std1,
+            #     "std_gr": std2,
+            #     "std_gc": std3
+            # }
+            
+        }
+        writer1.add_custom_scalars(layout)
 if __name__ == "__main__":
     main()
 

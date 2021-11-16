@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, FixedNormal
-from a2c_ppo_acktr.myutils import init
+from envs.distributions import Bernoulli, Categorical, DiagGaussian, FixedNormal
+from envs.myutils import init
 
 
 class Flatten(nn.Module):
@@ -13,7 +13,7 @@ class Flatten(nn.Module):
 
 
 class Policy(nn.Module):
-    def __init__(self, obs_shape, action_space, base=None):
+    def __init__(self, obs_shape, action_space, net_width, base=None):
         super(Policy, self).__init__()
         if base is None:
             if len(obs_shape) == 3:
@@ -23,7 +23,7 @@ class Policy(nn.Module):
             else:
                 raise NotImplementedError
 
-        self.base = base(obs_shape[0])
+        self.base = base(obs_shape[0], net_width)
 
         if action_space.__class__.__name__ == "Discrete":
             num_outputs = action_space.n
@@ -192,7 +192,7 @@ class CNNBase(NNBase):
 
 
 class MLPBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=256):
+    def __init__(self, num_inputs, width, recurrent=False, hidden_size=256):
         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
 
         if recurrent:
@@ -202,16 +202,21 @@ class MLPBase(NNBase):
                                constant_(x, 0), np.sqrt(2))
 
         self.actor = nn.Sequential(
-            # init_(nn.Linear(num_inputs, hidden_size)), nn.ReLU(),
-            # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
-
+            init_(nn.Linear(num_inputs, hidden_size)), nn.ReLU(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
+            # init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+            # init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+        # self.actor = nn.ModuleList(
+        #     [init_(nn.Linear(num_inputs, hidden_size))] + [nn.ReLU()] + [nn.Linear(hidden_size, hidden_size) for _ in range(width-1)] 
+        # )
+        # self.critic = nn.ModuleList(
+        #     [init_(nn.Linear(num_inputs, hidden_size))] + [nn.ReLU()] + [nn.Linear(hidden_size, hidden_size) for _ in range(width-1)] 
+        # )
         self.critic = nn.Sequential(
-            # init_(nn.Linear(num_inputs, hidden_size)), nn.ReLU(),
-            # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+            init_(nn.Linear(num_inputs, hidden_size)), nn.ReLU(),
+            init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
+            # init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+            # init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
 
         self.critic_linear = init_(nn.Linear(hidden_size, 1))
 

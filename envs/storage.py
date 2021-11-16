@@ -69,7 +69,7 @@ class RolloutStorage(object):
                         gamma,
                         gae_lambda,
                         use_proper_time_limits=True):
-        self.rewards = (self.rewards-self.rewards.mean()) / (self.rewards.std() + 1e-5)
+        # self.rewards = (self.rewards-self.rewards.mean()) / (self.rewards.std() + 1e-5)
         if use_proper_time_limits:
             if use_gae:
                 self.value_preds[-1] = next_value

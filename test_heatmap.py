@@ -9,10 +9,10 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import seaborn as sns
 sns.set()
-from a2c_ppo_acktr.envs import VecPyTorch, make_vec_envs, make_rdw_env
-# from a2c_ppo_acktr.myutils import get_render_func, get_vec_normalize
+from envs.envs import VecPyTorch, make_vec_envs, make_rdw_env
+# from envs.myutils import get_render_func, get_vec_normalize
 
-sys.path.append('a2c_ppo_acktr')
+sys.path.append('envs')
 parser = argparse.ArgumentParser(description='RL')
 parser.add_argument(
     '--seed', type=int, default=1, help='random seed (default: 1)')
