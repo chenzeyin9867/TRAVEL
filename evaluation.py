@@ -11,8 +11,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 import numpy as np
 
-
-
 def phrlEvaluate(actor_critic, epoch, **kwargs):
     gamma, stack_frame_num, path = kwargs['gamma'], kwargs['stack_frame'], kwargs['data']
     env = PassiveHapticsEnv(gamma,  stack_frame_num, path,  eval=True)

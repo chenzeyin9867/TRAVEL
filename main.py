@@ -78,7 +78,7 @@ def main():
             myutils.update_linear_schedule(
                 agent.optimizer, j, num_updates, args.lr)
 
-        for step in trange(args.num_steps):
+        for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
                 value, action_mean, action_std = actor_critic.act(rollouts.obs[step])
@@ -132,12 +132,11 @@ def main():
 
             print(args.env_name)
             print(
-                "Epoch_%d/%d" % (j, num_updates), 
-                "|r_phrl:{:.2f} |r_none:{:.2f} |pde_phrl:{:.2f} |pde_none:{:.2f} "
-                "|poe_phrl:{:.2f} |poe_none:{:.2f}"
-                .format(entropy_loss, r_eval.item(), r_none.item(), pde, pde_, poe, poe_))
-            print("std:{:.3f} {:.3f} {:.3f}" 
-                  "|gt:{:.2f}|gr:{:.2f} |gc:{:.2f}\t|".
+                "Epoch_%d/%d\t" % (j, num_updates), 
+                "|r_phrl:{:.2f}  |r_none:{:.2f}  |pde_phrl:{:.2f}  |pde_none:{:.2f} |poe_phrl:{:.2f}  |poe_none:{:.2f}"
+                .format(r_eval.item(), r_none.item(), pde, pde_, poe.item(), poe_.item()))
+            print("std:{:.3f} {:.3f} {:.3f}\t" 
+                  "|gt:{:.2f} |gr:{:.2f} |gc:{:.2f}\t|".
                   format(np.mean(std1), np.mean(std2), np.mean(std3), 
                   np.mean(gt).item(), np.mean(gr).item(), np.mean(gc).item()),
                   "reset_phrl:", collide, " reset_none:", collide_,  
@@ -148,41 +147,43 @@ def main():
         # Handle the tensorboard 
         writer1.add_scalar('Loss/value_loss', value_loss, global_step=j)
         writer1.add_scalar('Loss/actor_loss', action_loss, global_step=j)
-        writer1.add_scalar('entropy_loss', entropy_loss, global_step=j)
-        writer1.add_scalar('total_loss', total_loss, global_step=j)
-        writer1.add_scalar('pde', pde, global_step=j)
-        writer1.add_scalar('poe', poe, global_step=j)
-        writer1.add_scalar('phrl_reward', r_eval, global_step=j)
+        writer1.add_scalar('Loss/entropy_loss', entropy_loss, global_step=j)
+        writer1.add_scalar('Loss/total_loss', total_loss, global_step=j)
+        # Metrics
+        writer1.add_scalar('Metric/pde', pde, global_step=j)
+        writer1.add_scalar('Metric/poe', poe, global_step=j)
+        writer1.add_scalar('Metric/phrl_reward', r_eval, global_step=j)
+        writer1.add_scalar("Metric/explained_var", explained_variance, global_step=j)
+        # Vars
+        writer1.add_scalar('Vars/gt', np.mean(gt).item(), global_step=j)
+        writer1.add_scalar('Vars/gr', np.mean(gr).item(), global_step=j)
+        writer1.add_scalar('Vars/gc', np.mean(gc).item(), global_step=j)
+        writer1.add_scalar('Vars/reset', collide, global_step=j)
         
-        writer1.add_scalar('gt', np.mean(gt).item(), global_step=j)
-        writer1.add_scalar('gr', np.mean(gr).item(), global_step=j)
-        writer1.add_scalar('gc', np.mean(gc).item(), global_step=j)
-        writer1.add_scalar('reset', collide, global_step=j)
-        writer1.add_scalar("explained_var", explained_variance, global_step=j)
-        layout = {
-            'Loss':{
-                'v_loss': ['Multiline', ["Loss/value_loss"]],
-                # 'a_loss': action_loss,
-                # 'e_loss': entropy_loss,
-                # 't_loss': total_loss
-            },
-            # 'Metrics':{
-            #     'pde': pde,
-            #     'poe': poe,
-            #     'collide': collide,
-            #     'expained_var': explained_variance
-            # },
-            # 'var':{
-            #     'gt': gt,
-            #     'gc': gc,
-            #     'gr': gr,
-            #     'std_gt': std1,
-            #     "std_gr": std2,
-            #     "std_gc": std3
-            # }
+        # layout = {
+        #     'Loss':{
+        #         'v_loss': ['Multiline', ["value_loss"]],
+        #         # 'a_loss': action_loss,
+        #         # 'e_loss': entropy_loss,
+        #         # 't_loss': total_loss
+        #     },
+        #     # 'Metrics':{
+        #     #     'pde': pde,
+        #     #     'poe': poe,
+        #     #     'collide': collide,
+        #     #     'expained_var': explained_variance
+        #     # },
+        #     # 'var':{
+        #     #     'gt': gt,
+        #     #     'gc': gc,
+        #     #     'gr': gr,
+        #     #     'std_gt': std1,
+        #     #     "std_gr": std2,
+        #     #     "std_gc": std3
+        #     # }
             
-        }
-        writer1.add_custom_scalars(layout)
+        # }
+        # writer1.add_custom_scalars(layout)
 if __name__ == "__main__":
     main()
 

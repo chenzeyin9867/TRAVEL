@@ -18,7 +18,7 @@ STEP_LOW = int(0.5 / VELOCITY)
 STEP_HIGH = int(3.5 / VELOCITY)
 DELTA_X = (WIDTH_ALL - WIDTH) / 2.0
 DELTA_Y = (HEIGHT_ALL - HEIGHT) / 2.0
-PENALTY = torch.Tensor([10.0])
+PENALTY = torch.Tensor([100.0])
 OBSERVATION_SPACE = 13
 
 
@@ -62,10 +62,10 @@ class PassiveHapticsEnv(object):
         #         self.delta_direction_per_iter
         #         ]
 
-        state = [ self.x_p,  self.y_p,   self.o_p,             # physical observation
-                  self.x_v,  self.y_v,   self.o_v,             # virtual  observation
-                  WIDTH,     HEIGHT,     self.o_t_p,                 # physical space info
-                  WIDTH_ALL, HEIGHT_ALL, self.o_t_v,                   # virtual  space info
+        state = [ self.x_p/WIDTH,        self.y_p/HEIGHT,       (self.o_p + PI)/(2*PI),                     # physical observation
+                  self.x_v/WIDTH_ALL,    self.y_v/HEIGHT_ALL,   (self.o_v + PI)/(2*PI),                     # virtual  observation
+                  self.x_t_p/WIDTH,      self.y_t_p/HEIGHT,     (self.o_t_p + PI)/(2*PI),                   # physical space info
+                  self.x_t_v/WIDTH_ALL,  self.y_t_v/HEIGHT_ALL, (self.o_t_v + PI)/(2*PI),                   # virtual  space info
                   self.delta_direction_per_iter                        # eye direction             
                 ]
         
@@ -336,9 +336,9 @@ class PassiveHapticsEnv(object):
     def get_reward(self):
         # d_wall = min(self.x_p/WIDTH, (WIDTH-self.x_p)/WIDTH, (self.y_p)/HEIGHT, (HEIGHT-self.y_p)/HEIGHT)
         # r2 = self.get_reward_distance()
-        r1 = self.get_reward_wall()
-        # r3 = self.get_reward_angle()
-        return r1
+        # r1 = self.get_reward_wall()
+        r3 = self.get_reward_angle()
+        return r3
  
 
     def print(self):
@@ -380,7 +380,7 @@ class PassiveHapticsEnv(object):
     # This method compute the angle error between the person and the target
     def get_reward_angle(self):
         # return self.err_angle() / (PI)
-        vec1 = np.array([self.x_t_p-self.x_p, self.y_t_p -self.y_p])
+        vec1 = np.array([self.x_t_p - self.x_p, self.y_t_p -self.y_p])
         vec2 = np.array([self.x_t_v - self.x_v, self.y_t_v - self.y_v])
 
         # vec1 = np.array([np.cos(self.obj_d_p), np.sin(self.obj_d_p)])

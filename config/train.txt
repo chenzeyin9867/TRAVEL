@@ -1,6 +1,6 @@
-log-interval =  20
+log-interval =  10
 save-interval = 100
-num-steps =     1024
+num-steps =     8192
 num-processes = 1 
 lr =            3e-4 
 entropy-coef = 0  
@@ -13,9 +13,7 @@ num-env-steps = 10000000
 use-linear-lr-decay = True
 env-name = phrl_test
 data = ./dataset/h20w20
-test-frames = 20
+test-frames = 200
 draw = true
 path-type = 0
-
-
 net-width = 2
