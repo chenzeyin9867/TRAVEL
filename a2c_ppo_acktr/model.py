@@ -49,12 +49,6 @@ class Policy(nn.Module):
     def forward(self, inputs):
         value, actor_features = self.base(inputs)
         action_mean, action_logstd = self.dist(actor_features)
-        # dist,mean, std = self.dist(actor_features)
-        # print(action, mean, std)
-        # action_log_probs = dist.log_probs(action)
-        # action_log_probs = torch.Tensor([1.])
-        # dist_entropy = dist.entropy().mean()
-
         return value, action_mean, action_logstd
 
     def act(self, inputs, deterministic=False):
@@ -95,14 +89,6 @@ class NNBase(nn.Module):
 
         self._hidden_size = hidden_size
         self._recurrent = recurrent
-
-        # if recurrent:
-        #     self.gru = nn.GRU(recurrent_input_size, hidden_size)
-        #     for name, param in self.gru.named_parameters():
-        #         if 'bias' in name:
-        #             nn.init.constant_(param, 0)
-        #         elif 'weight' in name:
-        #             nn.init.orthogonal_(param)
 
     @property
     def is_recurrent(self):
@@ -206,7 +192,7 @@ class CNNBase(NNBase):
 
 
 class MLPBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=128):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=256):
         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
 
         if recurrent:

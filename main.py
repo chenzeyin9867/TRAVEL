@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from a2c_ppo_acktr import algo, myutils
 from a2c_ppo_acktr.arguments import get_args
-from a2c_ppo_acktr.envs_general import  PassiveHapticsEnv, make_passive_haptics_env, RunningStats, OBS_NORM, REWARD_SCALE
+from a2c_ppo_acktr.envs_general import  PassiveHapticsEnv
 from a2c_ppo_acktr.model import Policy
 from a2c_ppo_acktr.storage import RolloutStorage
 from evaluation import PassiveHapticRdwEvaluate
@@ -27,10 +27,11 @@ def main():
     device = torch.device("cuda:0" if args.cuda else "cpu")
     print(device)
 
-    envs = PassiveHapticsEnv(args.gamma, 10)
+    envs = PassiveHapticsEnv(args.gamma, 10, eval=False)
     actor_critic = Policy(
         envs.observation_space.shape,
         envs.action_space)
+
     if args.load_epoch != 0:
         actor_critic = \
             torch.load('./trained_models/' + args.env_name + '/%d.pth' % args.load_epoch)
@@ -73,33 +74,25 @@ def main():
                 # print(action_std)
                 dist = FixedNormal(action_mean, action_std)
                 action = dist.sample()
-                # print(action_mean, action_std, action)
-                # action = action_mean
-                # action_log_prob = dist.log_probs(action)
-                # action = action.clamp(-1.0, 1.0)
-
+                # action = torch.clamp(action, -1.0, 1.0)
                 action_log_prob = dist.log_probs(action)
-                # print(action)
-                # action = action.clamp(-1.0, 1.0)
-            # print(step)
+
             # Obser reward and next obs
-            obs, reward, done, infos, ret_reward = envs.step(action)
+            obs, reward, done, infos = envs.step(action)
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
             bad_masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in infos])
-            rollouts.insert(obs, None, action,
-                            action_log_prob, value, torch.Tensor([reward]), masks, bad_masks)
+            rollouts.insert(obs, action, action_log_prob, value, torch.Tensor([reward]), masks, bad_masks)
 
         with torch.no_grad():
-            next_value = actor_critic.get_value(
-                rollouts.obs[-1]).detach()
+            next_value = actor_critic.get_value(rollouts.obs[-1]).detach()
 
         rollouts.compute_returns(next_value, args.use_gae, args.gamma,
                                  args.gae_lambda, args.use_proper_time_limits)
 
-        value_loss, action_loss, entropy_loss, total_loss = agent.update(rollouts, args)
+        value_loss, action_loss, entropy_loss, total_loss, explained_variance = agent.update(rollouts, args)
 
         rollouts.after_update()
 
@@ -120,10 +113,8 @@ def main():
         r = int(num*3/4)
         if j % args.log_interval == 0:
             r_eval, r_none, distance, disnosrl, angle_srl, angle_none, flag, m1, m2, std1, std2, std3, gt, gr, gc, c, c_ = \
-                PassiveHapticRdwEvaluate(actor_critic, args.seed,
-                                         args.num_processes, args.gamma, args.log_dir, device, 10, j, flag, args.env_name, num=num)
-            # print("Epoch_%d" % j, "\t|eval_rewards:{:.2f}".format(r_eval))
-            total_num_steps = (j + 1) * args.num_processes * args.num_steps
+                PassiveHapticRdwEvaluate(actor_critic, args.gamma, 10, j, flag, args.env_name, num=num)
+
             end = time.time()
             if R_none == 0:
                 R_none = r_none
@@ -131,42 +122,35 @@ def main():
             if min_median > m1[mid]:
                 min_median = m1[mid]
                 min_median_epoch = j
+            print(args.env_name)
             print(
-                # "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.2f}/{:.2f}, min/max reward {:.2f}/{:.2f}\n"
-                "Epoch_%d/%d" % (j, num_updates), "\t|v_loss:{:.4f}  |a_loss:{:.4f}|entropy:{:.4f} |total_l:{:.4f}"
-                                                  " |r_eval:{:.2f} |r_none:{:.2f} |srl_dis:{:.2f} |no_dis:{:.2f} "
-                                                  "|ang_srl:{:.2f} |ang_none:{:.2f} |srl:{:.2f}"
-                                                  " |none:{:.2f}"
-                .format(value_loss, action_loss, entropy_loss, total_loss, r_eval.item(), R_none.item(),
-                        distance, Dis_none, angle_srl.item(), angle_none.item(), m1[mid], m2[mid]))
-            print("std:{:.4f} {:.4f} {:.4f}\t|gt:{:.2f}\t|gr:{:.2f}\t|gc:{:.2f}\t|".
-                  format(np.mean(std1), np.mean(std2), np.mean(std3), np.mean(gt).item(), np.mean(gr).item(),
-                         np.mean(gc).item()),
-                  "srl_reset:", c, " reset:", c_, " min_epoch:", min_median_epoch,
-                  "min_median:{:.2f} |t:{:.2f} |quart_srl:{:.2f} no_quart:{:.2f}"
-                    .format(min_median, end - t_start, m1[r]-m1[l], m2[r]-m2[l]))
+                "Epoch_%d/%d" % (j, num_updates), 
+                "\te_loss:{:.4f}\t"
+                "|r_phrl:{:.2f} |r_none:{:.2f} |dis_phrl:{:.2f} |dis_none:{:.2f} "
+                "|θ_phrl:{:.2f} |θ_none:{:.2f}"
+                .format(entropy_loss,
+                 r_eval.item(), R_none.item(), distance, Dis_none, 
+                 angle_srl.item(), angle_none.item()))
+            print("std:{:.3f} {:.3f} {:.3f}" 
+                  "|gt:{:.2f}|gr:{:.2f} |gc:{:.2f}\t|".
+                  format(np.mean(std1), np.mean(std2), np.mean(std3), 
+                  np.mean(gt).item(), np.mean(gr).item(), np.mean(gc).item()),
+                  "reset_phrl:", c, " reset_none:", c_,  "pde_phrl:{:.2f} |pde_none:{:.2f}"
+                  .format(m1[mid], m2[mid]),"min_median:{:.2f} |t:{:.2f} ".format(min_median, end - t_start)) 
             t_start = time.time()
-            # print(
-            #     # "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.2f}/{:.2f}, min/max reward {:.2f}/{:.2f}\n"
-            #     "Epoch_%d/%d" % (j, num_updates), "\t|mean_r:{:.2f}\t|v_loss:{:.8f}\t|a_loss:{:.4f}\t|t:{:.2f}"
-            #     .format(np.mean(episode_rewards), value_loss, action_loss, end - t_start))
-        # if (args.eval_interval is not None and len(episode_rewards) > 1
-        #         and j % args.eval_interval == 0):
-        #     #ob_rms = visualize.get_vec_normalize(envs).ob_rms
-        #     # evaluate(actor_critic, ob_rms, args.env_name, args.seed,
-        #     #          args.num_processes, eval_log_dir, device)
-        #
-        #     # eval_env = make_rdw_env(args.seed, args.num_processes, args.gamma, args.log_dir, device, 10)
-        #     r_eval = rdw_evaluate(actor_critic, args.seed, args.num_processes, args.gamma, args.log_dir, device, 10)
-        #     print("Epoch:", j, "\teval_rewards:{:.2f}".format(r_eval))
-        writer1.add_scalar('v_loss', value_loss, global_step=j)
-        writer1.add_scalar('ac_loss', action_loss, global_step=j)
+        writer1.add_scalar('value_loss', value_loss, global_step=j)
+        writer1.add_scalar('actor_loss', action_loss, global_step=j)
         writer1.add_scalar('entropy_loss', entropy_loss, global_step=j)
         writer1.add_scalar('total_loss', total_loss, global_step=j)
-        writer1.add_scalar('dis', distance, global_step=j)
-        writer1.add_scalar('eval_reward', r_eval, global_step=j)
-        writer1.add_scalar('err_angle', angle_srl, global_step=j)
-        writer1.add_scalar('median_err_dis', m1[mid], global_step=j)
+        writer1.add_scalar('physical_distance_error', distance, global_step=j)
+        writer1.add_scalar('phrl_reward', r_eval, global_step=j)
+        writer1.add_scalar('physical_angle_error', angle_srl, global_step=j)
+        writer1.add_scalar('median_distance_error', m1[mid], global_step=j)
+        writer1.add_scalar('gt', np.mean(gt).item(), global_step=j)
+        writer1.add_scalar('gr', np.mean(gr).item(), global_step=j)
+        writer1.add_scalar('gc', np.mean(gc).item(), global_step=j)
+        writer1.add_scalar('reset', c, global_step=j)
+        writer1.add_scalar("explained_var", explained_variance, global_step=j)
 if __name__ == "__main__":
     main()
 

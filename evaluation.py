@@ -12,9 +12,9 @@ from a2c_ppo_acktr.FrankENV import *
 import shutil
 
 
-def PassiveHapticRdwEvaluate(actor_critic, seed, num_processes, gamma, log_dir, device, stack_frame_num, ep, flag,
-                             env_name, random=False, num=50, draw=True, evalType=1):
-    env = make_passive_haptics_env(seed, num_processes, gamma, log_dir, device, stack_frame_num, random, eval=True)
+def PassiveHapticRdwEvaluate(actor_critic, gamma, stack_frame_num, ep, flag,
+                             env_name, random=False, num=50, draw=True, evalType=2):
+    env = PassiveHapticsEnv(gamma,  stack_frame_num, random, eval=True)
     reward = 0
     r_none = 0
     distance_physical = 0
@@ -37,8 +37,7 @@ def PassiveHapticRdwEvaluate(actor_critic, seed, num_processes, gamma, log_dir, 
         if t % 100 == 0 and not ep:
             print(t)
         env.reset()
-        ret, dis, angle, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c = env.step_specific_path(actor_critic, t, ep,
-                                                                                                evalType)
+        ret, dis, angle, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c = env.step_specific_path(actor_critic, t, ep, evalType)
         ret_srl_list.append(dis)
         collide += c
         std_list1.extend(std1)
@@ -70,12 +69,7 @@ def PassiveHapticRdwEvaluate(actor_critic, seed, num_processes, gamma, log_dir, 
             # plt_noSRL.set_title('noSRL')
 
             plt_srl.axis('scaled')
-            # plt_srl.set_xlim([0.0, WIDTH])
-            # plt_srl.set_ylim([0.0, HEIGHT])
             plt_srl.axis([0.0, WIDTH, 0.0, HEIGHT])
-            # plt_noSRL.axis([0.0, WIDTH, 0.0, HEIGHT])
-            # plt_srl.axis('equal')
-            # plt_none.axis('equal')
 
             plt_none.axis('scaled')
             plt_none.axis([0.0, WIDTH_ALL, 0.0, HEIGHT_ALL])
@@ -104,42 +98,6 @@ def PassiveHapticRdwEvaluate(actor_critic, seed, num_processes, gamma, log_dir, 
             plt.clf()
             plt_none.cla()
             plt_srl.cla()
-            # plt_noSRL.cla()
-            # print("retL", ret, "r_ :", r_, "dis: ", dis, "dis_ :" ,dis_)
-        # if draw:
-        #     plt.figure(1, figsize=(15, 5))
-        #     plt_srl = plt.subplot(1, 3, 2)
-        #     plt_none = plt.subplot(1, 3, 1)
-        #     plt_noSRL = plt.subplot(1, 3, 3)
-        #     plt_none.set_title('None')
-        #     plt_srl.set_title('SRL')
-        #     plt_noSRL.set_title('noSRL')
-        #     plt_srl.axis([0.0, WIDTH, 0.0, HEIGHT])
-        #     plt_noSRL.axis([0.0, WIDTH, 0.0, HEIGHT])
-        #     # plt_srl.axis('equal')
-        #     # plt_none.axis('equal')
-        #     plt_none.axis([0.0, WIDTH_ALL, 0.0, HEIGHT_ALL])
-        #     plt_srl.scatter(np.array(x), np.array(y), s=1, c='g')
-        #     plt_none.scatter(np.array(vx), np.array(vy), s=1, c='b')
-        #     plt_noSRL.scatter(np.array(x_), np.array(y_), s=1, c='r')
-        #     plt_srl.scatter(WIDTH / 2.0, HEIGHT / 2.0, s=10)
-        #     plt_noSRL.scatter(WIDTH / 2.0, HEIGHT / 2.0, s=10)
-        #     if ep is None:
-        #         if not os.path.exists('./plot_result/general'):
-        #             os.makedirs('./plot_result/general')
-        #         plt.savefig('./plot_result/general/' + str(t) + '_' + str(evalType) + '.png')
-        #         plt.clf()
-        #         plt_none.cla()
-        #         plt_srl.cla()
-        #     elif ep % 100 == 0:
-        #         if not os.path.exists('./plot_result/%s/ep_%d' % (env_name, ep)):
-        #             os.makedirs('./plot_result/%s/ep_%d' % (env_name, ep))
-        #         plt.savefig('./plot_result/%s/ep_%d/srl_%d.png' % (env_name, ep, t))
-        #         plt.clf()
-        #         plt_none.cla()
-        #         plt_srl.cla()
-        #         plt_noSRL.cla()
-        #     # print("retL", ret, "r_ :", r_, "dis: ", dis, "dis_ :" ,dis_)
 
     flag = 1
     r_1 = sorted(ret_srl_list)
