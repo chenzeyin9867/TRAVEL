@@ -13,6 +13,7 @@ from envs.storage import RolloutStorage
 from evaluation import phrlEvaluate
 from envs.distributions import FixedNormal
 from tqdm import trange
+from utils import drawPath
 
 
 # OBS_NORM = False
@@ -44,7 +45,7 @@ def main():
     actor_critic.to(device)
     
     if args.load_epoch != 0:
-        ckpt = torch.load(os.path.join('./trained_modes', args.env_name + "/%d.pth" % (args.load_epoch)))
+        ckpt = torch.load(os.path.join('./trained_models', args.env_name + "/%d.pth" % (args.load_epoch)))
         actor_critic.load_state_dict(ckpt["model_state_dict"])
         optimizer.load_state_dict(ckpt["optimizer_state_dict"])
         # actor_critic = torch.load('./trained_models/' + args.env_name + '/%d.pth' % args.load_epoch)
@@ -126,22 +127,18 @@ def main():
 
         num = 100
         if j == args.load_epoch:
-                r_none, pde_, poe_, collide_, _, _, _, _, _, _  = phrlEvaluate(None, j, **params)
+                rets_ = phrlEvaluate(None, j, **params) # Only run once
         if j % args.log_interval == 0:
-            r_eval, pde, poe, collide, std1, std2, std3, gt, gr, gc = phrlEvaluate(actor_critic, j, **params)
-
-            print(args.env_name)
-            print(
-                "Epoch_%d/%d\t" % (j, num_updates), 
-                "|r_phrl:{:.2f}  |r_none:{:.2f}  |pde_phrl:{:.2f}  |pde_none:{:.2f} |poe_phrl:{:.2f}  |poe_none:{:.2f}"
-                .format(r_eval.item(), r_none.item(), pde, pde_, poe.item(), poe_.item()))
-            print("std:{:.3f} {:.3f} {:.3f}\t" 
-                  "|gt:{:.2f} |gr:{:.2f} |gc:{:.2f}\t|".
-                  format(np.mean(std1), np.mean(std2), np.mean(std3), 
-                  np.mean(gt).item(), np.mean(gr).item(), np.mean(gc).item()),
-                  "reset_phrl:", collide, " reset_none:", collide_,  
-                  "\t|t:{:.2f} ".format(time.time() - t_start)) 
-            t_start = time.time()
+                rets  = phrlEvaluate(actor_critic, j, **params)
+                drawPath(rets_["vx"], rets_["vy"], rets_["x"], rets_["y"], rets["x"], rets["y"], envs, args, j)
+                print(args.env_name)
+                print( "Epoch_%d/%d\t" % (j, num_updates), 
+                    "\tr_phrl:%.2f\tr_none:%.2f\tpde_phrl:%.2f\tpde_none:%.2f\tpoe_phrl:%.2f\tpoe_none:%.2f"
+                        %(rets["reward"], rets_["reward"], rets["pde"], rets_["pde"], rets["poe"], rets_["poe"]))
+                print("std:%.3f %.3f %.3f\t\tgt:%.3f\tgr:%.3f\tgc:%.3f\t"
+                    % (rets["std1"], rets["std2"], rets["std3"], rets["gt"], rets["gr"], rets["gc"]), end="")
+                print("reset_phrl:", rets["collide"], " reset_none:", rets_["collide"], "\t|t:%.2f " % (time.time() - t_start)) 
+                t_start = time.time()
             
             
         # Handle the tensorboard 
@@ -150,15 +147,19 @@ def main():
         writer1.add_scalar('Loss/entropy_loss', entropy_loss, global_step=j)
         writer1.add_scalar('Loss/total_loss', total_loss, global_step=j)
         # Metrics
-        writer1.add_scalar('Metric/pde', pde, global_step=j)
-        writer1.add_scalar('Metric/poe', poe, global_step=j)
-        writer1.add_scalar('Metric/phrl_reward', r_eval, global_step=j)
+        writer1.add_scalar('Metric/pde', rets["pde"], global_step=j)
+        writer1.add_scalar('Metric/poe', rets["poe"], global_step=j)
+        writer1.add_scalar('Metric/phrl_reward', rets["reward"], global_step=j)
         writer1.add_scalar("Metric/explained_var", explained_variance, global_step=j)
+        # Gains
+        writer1.add_scalar('gains/gt', rets["gt"], global_step=j)
+        writer1.add_scalar('gains/gr', rets["gr"], global_step=j)
+        writer1.add_scalar('gains/gc', rets["gc"], global_step=j)
         # Vars
-        writer1.add_scalar('Vars/gt', np.mean(gt).item(), global_step=j)
-        writer1.add_scalar('Vars/gr', np.mean(gr).item(), global_step=j)
-        writer1.add_scalar('Vars/gc', np.mean(gc).item(), global_step=j)
-        writer1.add_scalar('Vars/reset', collide, global_step=j)
+        writer1.add_scalar('Vars/std1',  rets["std1"],    global_step=j)
+        writer1.add_scalar('Vars/std2',  rets["std2"],    global_step=j)
+        writer1.add_scalar('Vars/std3',  rets["std3"],    global_step=j)
+        writer1.add_scalar('Vars/reset', rets["collide"], global_step=j)
         
         # layout = {
         #     'Loss':{

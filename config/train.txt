@@ -1,4 +1,4 @@
-log-interval =  10
+log-interval =  20
 save-interval = 100
 num-steps =     8192
 num-processes = 1 
@@ -9,9 +9,9 @@ clip-param = 0.2
 num-mini-batch = 4 
 gamma = 0.99 
 gae-lambda =  0.95 
-num-env-steps = 10000000 
+num-env-steps = 50000000 
 use-linear-lr-decay = True
-env-name = phrl_test
+env-name = phrl_test_obs13_1-0.5R2+0.5R3_b8192
 data = ./dataset/h20w20
 test-frames = 200
 draw = true

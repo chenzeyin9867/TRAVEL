@@ -27,8 +27,10 @@ def phrlEvaluate(actor_critic, epoch, **kwargs):
     num         = kwargs['test_frames']
     draw        = kwargs['draw']
     evalType    = kwargs['path_type']
+    x_l, y_l, vx_l, vy_l = [], [], [], []
+    
     env.reset()
-    for t in trange(0, num):
+    for t in range(0, num):
         env.reset()
         if actor_critic != None:
             ret, pe, oe, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c = env.step_specific_path(actor_critic, t, evalType)
@@ -46,49 +48,31 @@ def phrlEvaluate(actor_critic, epoch, **kwargs):
         collide += c     
         pde += pe
         poe += oe # orientation error
+        x_l.append(x)
+        y_l.append(y)
+        vx_l.append(vx)
+        vy_l.append(vy)
+        
+        
 
-        if draw and t < num / 10.0:
-            plt.figure(1, figsize=(10, 5))
-            title = "SRL" if actor_critic else "None"
-            plt_srl = plt.subplot(1, 2, 2)
-            plt_none = plt.subplot(1, 2, 1)
-            plt_none.set_title('virtual')
-            plt_srl.set_title('physical')
-            plt_srl.axis('scaled')
-            plt_srl.axis([0.0, WIDTH, 0.0, HEIGHT])
-            plt_none.axis('scaled')
-            plt_none.axis([0.0, WIDTH_ALL, 0.0, HEIGHT_ALL])
-
-            plt_srl.scatter(np.array(x), np.array(y), label='SRL', s=1, c='r')
-            plt_none.scatter(np.array(vx), np.array(vy), s=1, c='b')
-            plt_srl.legend()
-            plt_srl.scatter(env.x_t_p, env.y_t_p, s=10)
-            plt_none.scatter(env.x_t_v, env.y_t_v, s= 10)
-            # plt_noSRL.scatter(WIDTH / 2.0, HEIGHT / 2.0, s=10)
-            name = {1: "same_edge", 2: "random", 3: "shuffle"}
-            if epoch is None:
-                if not os.path.exists('./plot_result/general'):
-                    os.makedirs('./plot_result/general')
-                plt.savefig('./plot_result/general/' + name[evalType] + '_' + str(t) + '.png')
-                plt.clf()
-                plt.cla()
-            elif epoch % 100 == 0:
-                if not os.path.exists('./plot_result/%s/ep_%d' % (kwargs['env_name'], epoch)):
-                    os.makedirs('./plot_result/%s/ep_%d' % (kwargs['env_name'], epoch))
-                plt.savefig('./plot_result/%s/ep_%d/%s_%d.png' % (kwargs['env_name'], epoch, title, t))
-            plt.clf()
-            plt.cla()
-
-    reward = reward / num
-    pde    = pde    / num
-    poe    = poe    / num
+    reward = (reward / num).item()
+    pde    = (pde    / num)
+    poe    = (poe    / num).item()
     std1   = np.mean(std_list1).item()
     std2   = np.mean(std_list2).item()
     std3   = np.mean(std_list3).item()
     gt     = np.mean(gt_list).item()
     gr     = np.mean(gr_list).item()
     gc     = np.mean(gc_list).item()
-    return reward, pde, poe, collide, std1, std2, std3, gt, gr, gc 
+    
+    rets ={
+        "reward": reward, "pde" : pde,   "poe" : collide, "collide": collide,
+        "std1"  : std1,   "std2": std2,  "std3": std3,
+        "gt"    : gt,     "gr"  : gr ,   "gc"  : gc,
+        "x"     : x_l,    "y"   : y_l,   "vx"  : vx_l,    "vy"     : vy_l   
+    }
+    
+    return rets
 
 
 if __name__ == '__main__':
