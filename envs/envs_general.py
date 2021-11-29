@@ -18,8 +18,8 @@ STEP_LOW = int(0.5 / VELOCITY)
 STEP_HIGH = int(3.5 / VELOCITY)
 DELTA_X = (WIDTH_ALL - WIDTH) / 2.0
 DELTA_Y = (HEIGHT_ALL - HEIGHT) / 2.0
-PENALTY = torch.Tensor([100.0])
-OBSERVATION_SPACE = 13
+PENALTY = torch.Tensor([10.0])
+OBSERVATION_SPACE = 12
 
 
 class PassiveHapticsEnv(object):
@@ -67,7 +67,7 @@ class PassiveHapticsEnv(object):
                   self.x_v/WIDTH_ALL,    self.y_v/HEIGHT_ALL,   (self.o_v + PI)   /(2*PI),                     # virtual  observation
                   self.x_t_p/WIDTH,      self.y_t_p/HEIGHT,     (self.o_t_p + PI) /(2*PI),                     # physical space info
                   self.x_t_v/WIDTH_ALL,  self.y_t_v/HEIGHT_ALL, (self.o_t_v + PI) /(2*PI),                     # virtual  space info
-                  self.delta_direction_per_iter                        # eye direction             
+                #   self.delta_direction_per_iter                        # eye direction             
                 ]
         
         # print(state)
@@ -186,7 +186,7 @@ class PassiveHapticsEnv(object):
         # print(ind)
         if evalType == 0:
             m = (int(ind / 5)) % 4
-            n = (ind % 10)/10.0
+            n = (ind % 9)/10.0 + 0.05
             if m == 0:
                 self.x_p = 0
                 self.y_p = HEIGHT * n
@@ -288,10 +288,10 @@ class PassiveHapticsEnv(object):
     def final_reward(self):
     
         # r = 10 * (1 - math.pow(distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT), 1))
-        # r = 10 * (2 - math.pow(distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT), 1) - self.err_angle()/ PI)
-        # print(0.1*distance(self.x_p, self.y_p, self.x_t_p, self.y_t_p), self.err_angle()/PI)
+        r = 100 * (1 - distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT) - 0.5 * self.err_angle()/180)
+        # print(distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT), 0.5 * self.err_angle()/180)
         # return r 
-        r = torch.Tensor([0.0])
+        # r = torch.Tensor([0.0])
         return r
 
     def step_specific_path_nosrl(self, ind, evalType):
@@ -336,16 +336,16 @@ class PassiveHapticsEnv(object):
 
     def get_reward(self):
         # d_wall = min(self.x_p/WIDTH, (WIDTH-self.x_p)/WIDTH, (self.y_p)/HEIGHT, (HEIGHT-self.y_p)/HEIGHT)
-        r2 = self.get_reward_distance()
+        r_d = self.get_reward_distance()
         # r1 = self.get_reward_wall()
-        r3 = self.get_reward_angle()
+        r_p, r_o = self.get_reward_position_orientation()
         # print("%3f" % (r3))
-        return 1 - (r2 + r3) / 2.0
+        return (1 - (5 * r_d + 0.5 * r_p + 0.5 * r_o))
  
 
     def print(self):
         print("physical:", self.x_p, " ", self.y_p, " ", self.o_p)
-        print("virtual:", self.x_v, " ", self.y_v, " ", self.o_v)
+        print("virtual:", self.x_v, " ", self.y_v, " ",  self.o_v)
 
     def get_reward_distance(self):
         d1 = distance(self.x_p/WIDTH,     self.y_p/HEIGHT,     self.x_t_p/WIDTH,     self.y_t_p /  HEIGHT)
@@ -377,29 +377,37 @@ class PassiveHapticsEnv(object):
 
     
     # This method compute the angle error between the person and the target
-    def get_reward_angle(self):
+    def get_reward_position_orientation(self):
         # return self.err_angle() / (PI)
-        vec1 = np.array([self.x_t_p - self.x_p, self.y_t_p -self.y_p])
+        vec1 = np.array([self.x_t_p - self.x_p, self.y_t_p -self.y_p])   # user   => target
         vec2 = np.array([self.x_t_v - self.x_v, self.y_t_v - self.y_v])
 
-        # vec1 = np.array([np.cos(self.obj_d_p), np.sin(self.obj_d_p)])
-        # vec2 = np.array([np.cos(self.obj_d),   np.sin(self.obj_d)])
 
-        vec3 = np.array([np.cos(self.o_p), np.sin(self.o_p)])
+        vec3 = np.array([np.cos(self.o_p), np.sin(self.o_p)])            # user     => orientation
         vec4 = np.array([np.cos(self.o_v), np.sin(self.o_v)])
+
+        vec5 = np.array([np.cos(self.o_t_p), np.sin(self.o_t_p)])        # target   => orientation 
+        vec6 = np.array([np.cos(self.o_t_v), np.sin(self.o_t_v)])
+
         vec1 = normaliztion(vec1)
         vec2 = normaliztion(vec2)
         ang1 = np.arccos(np.clip(np.dot(vec1, vec3), -1.0, 1.0))
         ang2 = np.arccos(np.clip(np.dot(vec2, vec4), -1.0, 1.0))
+        ang3 = np.arccos(np.clip(np.dot(vec3, vec5), -1.0, 1.0))
+        ang4 = np.arccos(np.clip(np.dot(vec5, vec6), -1.0, 1.0))
         # num1 = np.dot(vec1, vec3)
         # num2 = np.dot(vec2, vec4)
         if np.cross(vec1, vec3) * np.cross(vec2, vec4) < 0:
-            ang = delta_angle_norm(ang1 + ang2)
+            ang_pos = delta_angle_norm(ang1 + ang2)
         else:
-            ang = delta_angle_norm(ang1 - ang2)
+            ang_pos = delta_angle_norm(ang1 - ang2)
+        ang_orientation = delta_angle_norm(ang3 + ang4) if np.cross(vec3, vec5) * np.cross(vec4, vec6) < 0 else delta_angle_norm(ang3-ang4)
 
-        return abs(ang)/PI
+        return abs(ang_pos)/PI, abs(ang_orientation)/PI
 
+    # This method scale the orientation error
+    # def get_reward_orientation(self):
+        
 
 
     '''
@@ -433,6 +441,9 @@ def split(action):
     a = 1.060 + 0.2   * a
     b = 1.145 + 0.345 * b
     c = 0.13 * c
+    # a = 2.6 + 2.4 * a
+    # b = 2.6 + 2.4 * b
+    # c = 0.5 * c 
     return a, b, c
 
 

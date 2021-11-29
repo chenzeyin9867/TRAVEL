@@ -66,7 +66,7 @@ def phrlEvaluate(actor_critic, epoch, **kwargs):
     gc     = np.mean(gc_list).item()
     
     rets ={
-        "reward": reward, "pde" : pde,   "poe" : collide, "collide": collide,
+        "reward": reward, "pde" : pde,   "poe" : poe,    "collide": collide,
         "std1"  : std1,   "std2": std2,  "std3": std3,
         "gt"    : gt,     "gr"  : gr ,   "gc"  : gc,
         "x"     : x_l,    "y"   : y_l,   "vx"  : vx_l,    "vy"     : vy_l   

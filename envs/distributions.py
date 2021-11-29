@@ -86,6 +86,9 @@ class DiagGaussian(nn.Module):
         # self.fc_mean = nn.Sequential(
         #     init_(nn.Linear(num_inputs, num_outputs)), nn.Tanh()) 
         self.logstd = AddBias(torch.zeros(num_outputs))
+        # self.logstd = torch.full((num_outputs,), 0.8)
+        # self.initstd = torch.full((num_outputs,), 0.8)
+
 
     def forward(self, x):
         action_mean = self.fc_mean(x)

@@ -51,7 +51,7 @@ def main():
         # actor_critic = torch.load('./trained_models/' + args.env_name + '/%d.pth' % args.load_epoch)
         print("Loading the " + args.env_name + '/_%d.pt' % args.load_epoch + ' to train')
         
-    agent = algo.PPO(
+    agent = algo.PPO(   
         actor_critic,
         args.clip_param,
         args.ppo_epoch,
@@ -106,6 +106,9 @@ def main():
         value_loss, action_loss, entropy_loss, total_loss, explained_variance = agent.update(rollouts, args)
 
         rollouts.after_update()
+        
+        # Linear decay the std
+        # actor_critic.dist.logstd = actor_critic.dist.initstd * (num_updates - j + 100) / (num_updates)
 
         # save for every interval episode or for the last epoch
         if (j % args.save_interval == 0
@@ -132,7 +135,8 @@ def main():
                 rets  = phrlEvaluate(actor_critic, j, **params)
                 drawPath(rets_["vx"], rets_["vy"], rets_["x"], rets_["y"], rets["x"], rets["y"], envs, args, j)
                 print(args.env_name)
-                print( "Epoch_%d/%d\t" % (j, num_updates), 
+                lr = args.lr - (args.lr * (j / float(num_updates)))
+                print( "Epoch_%d/%d\t" % (j, num_updates), "lr:%.8f" % (lr), 
                     "\tr_phrl:%.2f\tr_none:%.2f\tpde_phrl:%.2f\tpde_none:%.2f\tpoe_phrl:%.2f\tpoe_none:%.2f"
                         %(rets["reward"], rets_["reward"], rets["pde"], rets_["pde"], rets["poe"], rets_["poe"]))
                 print("std:%.3f %.3f %.3f\t\tgt:%.3f\tgr:%.3f\tgc:%.3f\t"
