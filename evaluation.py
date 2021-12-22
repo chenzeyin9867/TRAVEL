@@ -8,10 +8,10 @@ import argparse
 from envs.envs_general import *
 from tqdm import trange
 from matplotlib.backends.backend_pdf import PdfPages
-
+from running_mean_std import RunningMeanStd
 import numpy as np
 
-def phrlEvaluate(actor_critic, epoch, **kwargs):
+def phrlEvaluate(actor_critic, running_mean_std, epoch, **kwargs):
     gamma, stack_frame_num, path = kwargs['gamma'], kwargs['stack_frame'], kwargs['data']
     env = PassiveHapticsEnv(gamma,  stack_frame_num, path,  eval=True)
     reward      = 0
@@ -33,7 +33,7 @@ def phrlEvaluate(actor_critic, epoch, **kwargs):
     for t in range(0, num):
         env.reset()
         if actor_critic != None:
-            ret, pe, oe, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c = env.step_specific_path(actor_critic, t, evalType)
+            ret, pe, oe, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c = env.step_specific_path(actor_critic, running_mean_std, t, evalType)
             std_list1.extend(std1)
             std_list2.extend(std2)
             std_list3.extend(std3)

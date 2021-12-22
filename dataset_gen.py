@@ -14,7 +14,7 @@ VELOCITY = 1.4 / 60.0
 HEIGHT, WIDTH = 20, 20
 FRAME_RATE = 60
 PI = np.pi
-STEP_LOW = int(0.5 / VELOCITY)
+STEP_LOW = int(1.5 / VELOCITY)
 STEP_HIGH = int(3.5 / VELOCITY)
 
 random.seed()
@@ -27,7 +27,8 @@ def outbound(x, y):
 def initialize():
     xt = WIDTH / 2
     yt = HEIGHT / 2
-    dt = PI/4
+    # dt = PI/4
+    dt = np.random.rand() * 2 * PI - PI #  random from [-pi, pi]
     return xt, yt, dt
 
 # normalize the theta into [-PI,PI]
@@ -49,7 +50,7 @@ mode = args.mode
 if __name__ == '__main__':
     result = []
     len_ = []
-    dir = os.path.join("./dataset", "h" + str(int(HEIGHT))+'w'+str(int(WIDTH)))
+    dir = os.path.join("./dataset", "1221_new_h" + str(int(HEIGHT))+'w'+str(int(WIDTH)))
     # dir = os.path.join(dir, mode)
     if not os.path.exists(dir):
         os.makedirs(dir)    
@@ -69,10 +70,11 @@ if __name__ == '__main__':
         for t in range(50000):
             if turn_flag == 0:
                 turn_flag = np.random.randint(STEP_LOW, STEP_HIGH)
-                delta_direction = random.normalvariate(0, 90)
+                delta_direction = random.normalvariate(0, 45)
                 delta_direction = delta_direction * PI / 180.
-                random_radius = 2 * random.random() + 2
-                num_change_direction = abs(delta_direction * random_radius / VELOCITY)
+                # random_radius = 0.5
+                # num_change_direction = abs(delta_direction * random_radius / VELOCITY)
+                num_change_direction = 1
                 delta_direction_per_iter = delta_direction / num_change_direction
             if num_change_direction > 0:
                 d = norm(d + delta_direction_per_iter)

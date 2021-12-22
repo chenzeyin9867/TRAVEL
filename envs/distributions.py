@@ -77,15 +77,19 @@ class Categorical(nn.Module):
 class DiagGaussian(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(DiagGaussian, self).__init__()
-
+        self.log_std_init = 0.0
+        self.num_outputs = num_outputs
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
 
         self.fc_mean = nn.Sequential(
             init_(nn.Linear(num_inputs, num_outputs)), nn.Tanh())
+        # self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
         # self.fc_mean = nn.Sequential(
-        #     init_(nn.Linear(num_inputs, num_outputs)), nn.Tanh()) 
-        self.logstd = AddBias(torch.zeros(num_outputs))
+        #     init_(nn.Linear(num_inputs, num_outputs))) 
+        # self.logstd = AddBias(torch.zeros(num_outputs))
+        # Modify the logstd representation
+        self.log_std = nn.Parameter(torch.ones(num_outputs) * self.log_std_init, requires_grad=True)
         # self.logstd = torch.full((num_outputs,), 0.8)
         # self.initstd = torch.full((num_outputs,), 0.8)
 
@@ -94,13 +98,13 @@ class DiagGaussian(nn.Module):
         action_mean = self.fc_mean(x)
 
         #  An ugly hack for my KFAC implementation.
-        zeros = torch.zeros(action_mean.size())
-        if x.is_cuda:
-            zeros = zeros.cuda()
+        # zeros = torch.zeros(action_mean.size())
+        # if x.is_cuda:
+        #     zeros = zeros.cuda()
 
-        action_logstd = self.logstd(zeros)
+        action_std = torch.ones(self.num_outputs) * self.log_std.exp()
         # print(action_mean, action_logstd)
-        return action_mean, action_logstd.exp()
+        return action_mean, action_std
 
 class Bernoulli(nn.Module):
     def __init__(self, num_inputs, num_outputs):

@@ -1,5 +1,7 @@
 import os
+from pickle import NONE
 import time
+from numpy.core.numeric import roll
 from tensorboardX import SummaryWriter
 import numpy as np
 import torch
@@ -13,10 +15,11 @@ from envs.storage import RolloutStorage
 from evaluation import phrlEvaluate
 from envs.distributions import FixedNormal
 from tqdm import trange
+from running_mean_std import RunningMeanStd
 from utils import drawPath
 
 
-# OBS_NORM = False
+OBS_NORM = False
 def main():
     args = get_args()
     params = args.__dict__
@@ -34,7 +37,10 @@ def main():
     print(args)
     
     # Instance the env, training batch
-    envs = PassiveHapticsEnv(args.gamma, args.stack_frame, eval=False, path=args.data)
+    envs = PassiveHapticsEnv(args.gamma, args.stack_frame, eval=False, path=args.data, obs_norm = OBS_NORM)
+    
+    if OBS_NORM:
+        running_mean_std = RunningMeanStd(envs.observation_space.shape)
     
     # Loading the actor-critc model
     actor_critic = Policy(
@@ -82,14 +88,19 @@ def main():
         for step in range(args.num_steps):
             # Sample actions
             with torch.no_grad():
-                value, action_mean, action_std = actor_critic.act(rollouts.obs[step])
+                obs = rollouts.obs[step]
+                if OBS_NORM:                # using obs norm
+                    obs = running_mean_std.process(obs)
+                value, action_mean, action_std = actor_critic.act(obs)
                 dist = FixedNormal(action_mean, action_std)
-                action = dist.sample()
-                action = torch.clamp(action, -1.0, 1.0)
+                action = dist.rsample()
+                
                 action_log_prob = dist.log_probs(action)
-
+                clipped_action = torch.clamp(action, -1.0, 1.0)
+                
+                
             # Obser reward and next obs
-            obs, reward, done, infos = envs.step(action)
+            obs, reward, done, infos = envs.step(clipped_action)
             # If done then clean the history of observations.
             masks = torch.FloatTensor(
                 [[0.0] if done_ else [1.0] for done_ in done])
@@ -104,8 +115,12 @@ def main():
                                  args.gae_lambda, args.use_proper_time_limits)
 
         value_loss, action_loss, entropy_loss, total_loss, explained_variance = agent.update(rollouts, args)
-
+        if OBS_NORM:
+            running_mean_std.update(rollouts.obs)
+        else:
+            running_mean_std = NONE
         rollouts.after_update()
+        
         
         # Linear decay the std
         # actor_critic.dist.logstd = actor_critic.dist.initstd * (num_updates - j + 100) / (num_updates)
@@ -124,15 +139,17 @@ def main():
                     'global_step':                  j,
                     'model_state_dict':             actor_critic.state_dict(),
                     'optimizer_state_dict':         agent.optimizer.state_dict(),
+                    'running_mean'        :         running_mean_std.mean if OBS_NORM else 0,
+                    'running_var':                  running_mean_std.var  if OBS_NORM else 0
                 }, path
             )
             print("Save checkpoint ", path)
 
         num = 100
         if j == args.load_epoch:
-                rets_ = phrlEvaluate(None, j, **params) # Only run once
+                rets_ = phrlEvaluate(None, running_mean_std, j, **params) # Only run once
         if j % args.log_interval == 0:
-                rets  = phrlEvaluate(actor_critic, j, **params)
+                rets  = phrlEvaluate(actor_critic, running_mean_std, j, **params)
                 drawPath(rets_["vx"], rets_["vy"], rets_["x"], rets_["y"], rets["x"], rets["y"], envs, args, j)
                 print(args.env_name)
                 lr = args.lr - (args.lr * (j / float(num_updates)))

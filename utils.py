@@ -14,7 +14,7 @@ def drawPath(vx_l, vy_l, x_none_l, y_none_l, x_l, y_l, env, args, epoch):
     name = args.env_name
     for t in range(len(vx_l)):
         vx, vy, x_, y_, x, y = vx_l[t], vy_l[t], x_none_l[t], y_none_l[t], x_l[t], y_l[t]
-        if draw and t < 20:
+        if draw and t < 100 and epoch % 500 == 0:
                 plt.figure(1, figsize=(10, 5))
                 plt_srl = plt.subplot(1, 2, 2)
                 plt_none = plt.subplot(1, 2, 1)
@@ -39,9 +39,9 @@ def drawPath(vx_l, vy_l, x_none_l, y_none_l, x_l, y_l, env, args, epoch):
                 #     plt.savefig('./plot_result/general/' + name[evalType] + '_' + str(t) + '.png')
                 #     plt.clf()
                 #     plt.cla()
-                if epoch % 100 == 0:
-                    if not os.path.exists('./plot_result/%s/ep_%d' % (name, epoch)):
-                        os.makedirs('./plot_result/%s/ep_%d' % (name, epoch))
-                    plt.savefig('./plot_result/%s/ep_%d/%d.png' % (name, epoch, t))
+                
+                if not os.path.exists('./plot_result/%s/ep_%d' % (name, epoch)):
+                    os.makedirs('./plot_result/%s/ep_%d' % (name, epoch))
+                plt.savefig('./plot_result/%s/ep_%d/%d.png' % (name, epoch, t))
                 plt.clf()
                 plt.cla()

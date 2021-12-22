@@ -7,7 +7,8 @@ from envs.distributions import FixedNormal
 import random
 import matplotlib.pyplot as plt
 import math
-OBS_NORM = False
+from running_mean_std import RunningMeanStd
+
 REWARD_SCALE = False
 VELOCITY = 1.4 / 60.0
 HEIGHT, WIDTH = 20 , 20
@@ -18,20 +19,20 @@ STEP_LOW = int(0.5 / VELOCITY)
 STEP_HIGH = int(3.5 / VELOCITY)
 DELTA_X = (WIDTH_ALL - WIDTH) / 2.0
 DELTA_Y = (HEIGHT_ALL - HEIGHT) / 2.0
-PENALTY = torch.Tensor([10.0])
-OBSERVATION_SPACE = 12
+PENALTY = torch.Tensor([1.0])
+OBSERVATION_SPACE = 6
 
 
 class PassiveHapticsEnv(object):
-    def __init__(self, gamma, num_frame_stack, path, random=False, eval=False):
+    def __init__(self, gamma, num_frame_stack, path, random=False, eval=False, obs_norm = False):
         self.distance = []
-        self.action_repeat = 20
+        self.action_repeat = 10
         self.num_frame_stack = num_frame_stack  # num of frames stcked before input to the MLP
         self.gamma = gamma                      # γ used in PPO
         self.observation_space = Box(-1., 1., (num_frame_stack * OBSERVATION_SPACE,))
         self.action_space = Box(-1.0, 1.0, (3,))
         self.obs = []                   # current stacked infos send to the networks
-
+        self.obs_norm = obs_norm
         self.x_t_p = WIDTH  / 2
         self.y_t_p = HEIGHT / 2
         self.o_t_p = -PI    / 4         # target's orientation in PE
@@ -65,8 +66,8 @@ class PassiveHapticsEnv(object):
 
         state = [ self.x_p/WIDTH,        self.y_p/HEIGHT,       (self.o_p + PI)   /(2*PI),                     # physical observation
                   self.x_v/WIDTH_ALL,    self.y_v/HEIGHT_ALL,   (self.o_v + PI)   /(2*PI),                     # virtual  observation
-                  self.x_t_p/WIDTH,      self.y_t_p/HEIGHT,     (self.o_t_p + PI) /(2*PI),                     # physical space info
-                  self.x_t_v/WIDTH_ALL,  self.y_t_v/HEIGHT_ALL, (self.o_t_v + PI) /(2*PI),                     # virtual  space info
+                #   self.x_t_p/WIDTH,      self.y_t_p/HEIGHT,     (self.o_t_p + PI) /(2*PI),                     # physical space info
+                #   self.x_t_v/WIDTH_ALL,  self.y_t_v/HEIGHT_ALL, (self.o_t_v + PI) /(2*PI),                     # virtual  space info
                 #   self.delta_direction_per_iter                        # eye direction             
                 ]
         
@@ -93,7 +94,7 @@ class PassiveHapticsEnv(object):
         self.x_v, self.y_v, self.o_v, self.delta_direction_per_iter  = self.v_path[self.v_step_pointer]                                      # initialize the user in virtual space
         self.x_p, self.y_p, self.o_p = initialize(seed)
         self.x_t_v, self.y_t_v, self.o_t_v, _ = self.v_path[-1]                     # initialize the target prop in virtual space
-        self.obs.extend(10 * self.get_obs())
+        self.obs.extend(self.num_frame_stack * self.get_obs())
         self.reward = 0.0
         
         return toTensor(self.obs)
@@ -171,7 +172,8 @@ class PassiveHapticsEnv(object):
         tmp_x = self.x_p + torch.cos(self.o_p) * delta_dis
         tmp_y = self.y_p + torch.sin(self.o_p) * delta_dis
         if outbound(tmp_x, tmp_y):
-            self.o_p = norm(self.o_p + PI)
+            # self.o_p = norm(self.o_p + PI)
+            self.o_p = self.compute_dir_to_obj()
             return False
         else:
             self.x_p = tmp_x
@@ -186,7 +188,7 @@ class PassiveHapticsEnv(object):
         # print(ind)
         if evalType == 0:
             m = (int(ind / 5)) % 4
-            n = (ind % 9)/10.0 + 0.05
+            n = (4 + ind % 22)/30.0 + 0.05
             if m == 0:
                 self.x_p = 0
                 self.y_p = HEIGHT * n
@@ -203,7 +205,7 @@ class PassiveHapticsEnv(object):
                 self.x_p = WIDTH * n
                 self.y_p = 0
                 self.o_p = PI / 2
-
+        # self.o_p = self.compute_dir_to_obj()
 
 
     def compute_dir_to_obj(self):
@@ -222,7 +224,7 @@ class PassiveHapticsEnv(object):
                 theta = norm(theta + PI)
         return theta
 
-    def step_specific_path(self, actor_critic, ind, evalType=1):
+    def step_specific_path(self, actor_critic, running_mean_std, ind, evalType=1):
         collide = 0
         std1 = []
         std2 = []
@@ -242,13 +244,17 @@ class PassiveHapticsEnv(object):
         assign = False
         while i < len(self.v_path):
             with torch.no_grad():
+                obs = torch.Tensor(self.obs).unsqueeze(0)
+                if self.obs_norm:
+                    obs = running_mean_std.process(obs)
                 _value, action_mean, action_log_std = actor_critic.act(
-                    torch.Tensor(self.obs).unsqueeze(0))
+                    obs)
                 dist = FixedNormal(action_mean, action_log_std)
-                std1.append(action_log_std[0][0].item())
-                std2.append(action_log_std[0][1].item())
-                std3.append(action_log_std[0][2].item())
+                std1.append(action_log_std[0].item())
+                std2.append(action_log_std[1].item())
+                std3.append(action_log_std[2].item())
                 action = dist.mode()
+                # action = torch.clamp(action, -1.0, 1.0)
             gt, gr, gc = split(action)
             gt_l.append(gt.item())
             gr_l.append(gr.item())
@@ -259,6 +265,7 @@ class PassiveHapticsEnv(object):
                     self.reward += self.final_reward()
                     break
                 signal = self.physical_step(gt, gr, gc)
+                # signal = self.physical_step_eval(gt, gr, gc)
                 self.vPathUpdate()
                 x_l.append(self.x_p)
                 y_l.append(self.y_p)
@@ -266,6 +273,7 @@ class PassiveHapticsEnv(object):
                 if not signal:
                     self.reward -= PENALTY
                     collide += 1
+                    # signal = True
                     break
                 elif m == 0:
                     self.reward += self.get_reward()
@@ -277,7 +285,8 @@ class PassiveHapticsEnv(object):
         vx_l = self.v_path[:, 0]
         vy_l = self.v_path[:, 1] 
         final_dis = math.sqrt((self.x_p - self.x_t_p) * (self.x_p  - self.x_t_p) +
-                              (self.y_p - self.y_t_p) * (self.y_p  - self.y_t_p))                  
+                              (self.y_p - self.y_t_p) * (self.y_p  - self.y_t_p))    
+        # print("Path: ", ind, " Collide: ", collide)              
         return self.reward, final_dis, self.err_angle(), gt_l, gr_l, gc_l, x_l, y_l, vx_l, vy_l, std1, std2, std3, collide
 
     def err_angle(self):
@@ -288,7 +297,7 @@ class PassiveHapticsEnv(object):
     def final_reward(self):
     
         # r = 10 * (1 - math.pow(distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT), 1))
-        r = 100 * (1 - distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT) - 0.5 * self.err_angle()/180)
+        r = (1 - distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT))
         # print(distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT), 0.5 * self.err_angle()/180)
         # return r 
         # r = torch.Tensor([0.0])
@@ -316,6 +325,7 @@ class PassiveHapticsEnv(object):
                     self.reward += self.final_reward()
                     break
                 signal = self.physical_step(gt, gr, gc)
+                # signal = self.physical_step_eval(gt, gr, gc)
                 x_l.append(self.x_p)
                 y_l.append(self.y_p)
                 self.vPathUpdate()
@@ -323,6 +333,7 @@ class PassiveHapticsEnv(object):
                 if not signal:
                     self.reward -= PENALTY
                     collide += 1
+                    # signal = True
                     break
                 elif m == 0:
                     self.reward += self.get_reward()
@@ -337,11 +348,15 @@ class PassiveHapticsEnv(object):
     def get_reward(self):
         # d_wall = min(self.x_p/WIDTH, (WIDTH-self.x_p)/WIDTH, (self.y_p)/HEIGHT, (HEIGHT-self.y_p)/HEIGHT)
         r_d = self.get_reward_distance()
-        # r1 = self.get_reward_wall()
-        r_p, r_o = self.get_reward_position_orientation()
+        r_avo = self.get_reward_wall()
+        r_p = self.get_reward_position_orientation()
         # print("%3f" % (r3))
-        return (1 - (5 * r_d + 0.5 * r_p + 0.5 * r_o))
- 
+        # self.r1.append(r_avo)
+        # self.r2.append(r_p)
+        # if(len(self.r1) == 1000):
+            # print("rd:%.4f  rp:%.4f" % (np.mean(self.r1), np.mean(self.r2)))    
+        return (1.0 + 0.3 * r_avo - (3 * r_d + r_p))/ 50
+        # return torch.Tensor([0.0])
 
     def print(self):
         print("physical:", self.x_p, " ", self.y_p, " ", self.o_p)
@@ -386,25 +401,25 @@ class PassiveHapticsEnv(object):
         vec3 = np.array([np.cos(self.o_p), np.sin(self.o_p)])            # user     => orientation
         vec4 = np.array([np.cos(self.o_v), np.sin(self.o_v)])
 
-        vec5 = np.array([np.cos(self.o_t_p), np.sin(self.o_t_p)])        # target   => orientation 
-        vec6 = np.array([np.cos(self.o_t_v), np.sin(self.o_t_v)])
+        # vec5 = np.array([np.cos(self.o_t_p), np.sin(self.o_t_p)])        # target   => orientation 
+        # vec6 = np.array([np.cos(self.o_t_v), np.sin(self.o_t_v)])
 
         vec1 = normaliztion(vec1)
         vec2 = normaliztion(vec2)
         ang1 = np.arccos(np.clip(np.dot(vec1, vec3), -1.0, 1.0))
         ang2 = np.arccos(np.clip(np.dot(vec2, vec4), -1.0, 1.0))
-        ang3 = np.arccos(np.clip(np.dot(vec3, vec5), -1.0, 1.0))
-        ang4 = np.arccos(np.clip(np.dot(vec5, vec6), -1.0, 1.0))
+        # ang3 = np.arccos(np.clip(np.dot(vec3, vec5), -1.0, 1.0))
+        # ang4 = np.arccos(np.clip(np.dot(vec5, vec6), -1.0, 1.0))
         # num1 = np.dot(vec1, vec3)
         # num2 = np.dot(vec2, vec4)
         if np.cross(vec1, vec3) * np.cross(vec2, vec4) < 0:
             ang_pos = delta_angle_norm(ang1 + ang2)
         else:
             ang_pos = delta_angle_norm(ang1 - ang2)
-        ang_orientation = delta_angle_norm(ang3 + ang4) if np.cross(vec3, vec5) * np.cross(vec4, vec6) < 0 else delta_angle_norm(ang3-ang4)
+        # ang_orientation = delta_angle_norm(ang3 + ang4) if np.cross(vec3, vec5) * np.cross(vec4, vec6) < 0 else delta_angle_norm(ang3-ang4)
 
-        return abs(ang_pos)/PI, abs(ang_orientation)/PI
-
+        # return abs(ang_pos)/PI, abs(ang_orientation)/PI
+        return abs(ang_pos)/PI
     # This method scale the orientation error
     # def get_reward_orientation(self):
         
@@ -438,12 +453,12 @@ This is the rdw environment
 
 def split(action):
     a, b, c = action[0]
-    a = 1.060 + 0.2   * a
-    b = 1.145 + 0.345 * b
-    c = 0.13 * c
-    # a = 2.6 + 2.4 * a
-    # b = 2.6 + 2.4 * b
-    # c = 0.5 * c 
+    # a = 1.060 + 0.2   * a
+    # b = 1.145 + 0.345 * b
+    # c = 0.13 * c
+    a = 1 + 0.5 * a
+    b = 1 + 0.5 * b
+    c = 0.5 * c 
     return a, b, c
 
 
