@@ -14,6 +14,7 @@ import numpy as np
 def phrlEvaluate(actor_critic, running_mean_std, epoch, **kwargs):
     gamma, stack_frame_num, path = kwargs['gamma'], kwargs['stack_frame'], kwargs['data']
     env = PassiveHapticsEnv(gamma,  stack_frame_num, path,  eval=True)
+    touch_cnt   = 0
     reward      = 0
     collide     = 0
     pde         = 0     # Physical Distance    Error
@@ -33,7 +34,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, **kwargs):
     for t in range(0, num):
         env.reset()
         if actor_critic != None:
-            ret, pe, oe, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c = env.step_specific_path(actor_critic, running_mean_std, t, evalType)
+            ret, pe, oe, t_cnt, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c = env.step_specific_path(actor_critic, running_mean_std, t, gain=True)
             std_list1.extend(std1)
             std_list2.extend(std2)
             std_list3.extend(std3)
@@ -42,22 +43,24 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, **kwargs):
             gc_list.extend(gc)
 
         else: # None
-            ret, pe, oe, x, y, vx, vy,c = env.step_specific_path_nosrl(t, evalType)    
+            ret, pe, oe, t_cnt, _, _, _ ,x, y, vx, vy, _, _, _, c = env.step_specific_path(None, None, t, gain=False)    
   
         reward += ret
         collide += c     
         pde += pe
         poe += oe # orientation error
+        touch_cnt += t_cnt
         x_l.append(x)
         y_l.append(y)
         vx_l.append(vx)
         vy_l.append(vy)
         
         
+        
 
     reward = (reward / num).item()
-    pde    = (pde    / num)
-    poe    = (poe    / num).item()
+    pde    = (pde    / touch_cnt)
+    poe    = (poe    / num)
     std1   = np.mean(std_list1).item()
     std2   = np.mean(std_list2).item()
     std3   = np.mean(std_list3).item()

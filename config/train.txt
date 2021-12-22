@@ -1,4 +1,4 @@
-log-interval                =     20
+log-interval                =     10
 save-interval               =     100
 num-steps                   =     8192
 num-processes               =     1 
@@ -11,8 +11,8 @@ gamma                       =     0.99
 gae-lambda                  =     0.95
 num-env-steps               =     50000000 
 use-linear-lr-decay         =     True
-env-name                    =     1222_h20_radius_gamma0.99_lr0.0003_obs6_rsample_stack10_r_1+0.3r_avo-3r_d-r_p_div50_b8192_clip0.2_p1_final1-pde_noconstraint_ppo8_ce0.001_hs256_layer4_clipAfter_vertical
-data                        =     ./dataset/new_h20w20
+env-name                    =     1222_h20_multiTar_gamma0.99_lr0.0003_obs6_rsample_stack10_r_1+0.3r_avo-3r_d-r_p_div50_b8192_clip0.2_p1_final1-pde_noconstraint_ppo8_ce0.001_hs256_layer4
+data                        =     dataset/muti_target/h10w10
 test-frames                 =     100
 draw                        =     true
 path-type                   =     0
