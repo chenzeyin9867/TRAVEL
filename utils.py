@@ -14,7 +14,7 @@ def drawPath(vx_l, vy_l, x_none_l, y_none_l, x_l, y_l, env, args, epoch):
     name = args.env_name
     for t in range(len(vx_l)):
         vx, vy, x_, y_, x, y = vx_l[t], vy_l[t], x_none_l[t], y_none_l[t], x_l[t], y_l[t]
-        if draw and t < 100 and epoch % 500 == 0:
+        if draw and t < 100 and epoch % 100 == 0:
                 plt.figure(1, figsize=(10, 5))
                 plt_srl = plt.subplot(1, 2, 2)
                 plt_none = plt.subplot(1, 2, 1)
@@ -44,3 +44,21 @@ def drawPath(vx_l, vy_l, x_none_l, y_none_l, x_l, y_l, env, args, epoch):
                 plt.savefig('./plot_result/%s/ep_%d/%d.png' % (name, epoch, t))
                 plt.clf()
                 plt.cla()
+
+def plot_hist(path, gt, gr, gc):
+    
+    plt.hist(gt, bins=50, rwidth=2, color='crimson', density=True)
+    plt.yticks([0, 1, 10, 100])
+    plt.yscale('log')
+    plt.savefig(os.path.join(path, "gt.png"))
+    plt.cla()
+    plt.hist(gr, bins=50, rwidth=2, color='crimson', density=True)
+    plt.yticks([0, 1, 10, 100])
+    plt.yscale('log')
+    plt.savefig(os.path.join(path, "gr.png"))
+    plt.cla()
+    plt.hist(gc, bins=50, rwidth=2, color='crimson', density=True)
+    plt.yticks([0, 1, 10, 100])
+    plt.yscale('log')
+    plt.savefig(os.path.join(path, "gc.png"))
+    plt.cla()

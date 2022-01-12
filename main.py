@@ -16,7 +16,7 @@ from evaluation import phrlEvaluate
 from envs.distributions import FixedNormal
 from tqdm import trange
 from running_mean_std import RunningMeanStd
-from utils import drawPath
+from utils import drawPath, plot_hist
 
 
 OBS_NORM = False
@@ -147,15 +147,21 @@ def main():
 
         num = 100
         if j == args.load_epoch:
-                rets_ = phrlEvaluate(None, running_mean_std, j, **params) # Only run once
+                rets_ = phrlEvaluate(None, running_mean_std, j, test=False, **params) # Only run once
         if j % args.log_interval == 0:
-                rets  = phrlEvaluate(actor_critic, running_mean_std, j, **params)
+                rets  = phrlEvaluate(actor_critic, running_mean_std, j, test=False, **params)
                 drawPath(rets_["vx"], rets_["vy"], rets_["x"], rets_["y"], rets["x"], rets["y"], envs, args, j)
+                
+                hist_path = os.path.join("plot_result", args.env_name + "/hist/" + str(j))
+                if not os.path.exists(hist_path):
+                    os.makedirs(hist_path)
+                plot_hist(hist_path, rets['gt_l'], rets['gr_l'], rets['gc_l'])
+                
                 print(args.env_name)
                 lr = args.lr - (args.lr * (j / float(num_updates)))
                 print( "Epoch_%d/%d\t" % (j, num_updates), "lr:%.8f" % (lr), 
-                    "\tr_phrl:%.2f\tr_none:%.2f\tpde_phrl:%.2f\tpde_none:%.2f\tpoe_phrl:%.2f\tpoe_none:%.2f"
-                        %(rets["reward"], rets_["reward"], rets["pde"], rets_["pde"], rets["poe"], rets_["poe"]))
+                    "\tr_phrl:%.2f\tr_none:%.2f\tpde_phrl:%.2f\tpde_none:%.2f\tpde_phrl_med:%.2f\tpde_none_med:%.2f\ttouch_phrl:%.2f\ttouch_none:%.2f"
+                        %(rets["reward"], rets_["reward"], rets["pde"], rets_["pde"], rets["pde_med"], rets_["pde_med"], rets["touch_cnt"], rets_["touch_cnt"]))
                 print("std:%.3f %.3f %.3f\t\tgt:%.3f\tgr:%.3f\tgc:%.3f\t"
                     % (rets["std1"], rets["std2"], rets["std3"], rets["gt"], rets["gr"], rets["gc"]), end="")
                 print("reset_phrl:", rets["collide"], " reset_none:", rets_["collide"], "\t|t:%.2f " % (time.time() - t_start)) 
@@ -169,7 +175,8 @@ def main():
         writer1.add_scalar('Loss/total_loss', total_loss, global_step=j)
         # Metrics
         writer1.add_scalar('Metric/pde', rets["pde"], global_step=j)
-        writer1.add_scalar('Metric/poe', rets["poe"], global_step=j)
+        writer1.add_scalar("Metric/pde_med", rets["pde_med"], global_step=j)
+        writer1.add_scalar('Metric/touch_cnt', rets["touch_cnt"], global_step=j)
         writer1.add_scalar('Metric/phrl_reward', rets["reward"], global_step=j)
         writer1.add_scalar("Metric/explained_var", explained_variance, global_step=j)
         # Gains
@@ -182,6 +189,7 @@ def main():
         writer1.add_scalar('Vars/std3',  rets["std3"],    global_step=j)
         writer1.add_scalar('Vars/reset', rets["collide"], global_step=j)
         
+        # writer1.add_image()
         # layout = {
         #     'Loss':{
         #         'v_loss': ['Multiline', ["value_loss"]],

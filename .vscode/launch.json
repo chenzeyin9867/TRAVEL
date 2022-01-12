@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--config", "config/train.txt"]
+            "args": ["--config", "config/train.txt", "--data", "dataset/muti_target_center/h10w10", "--num-steps", "512", "--test-frame", "10"]
         }
     ]
 }
