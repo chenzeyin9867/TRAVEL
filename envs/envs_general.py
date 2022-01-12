@@ -307,13 +307,24 @@ class PassiveHapticsEnv(object):
         gap_dis = distance(self.x_p/WIDTH, self.y_p/HEIGHT, x_t/WIDTH, y_t/HEIGHT)
         # gap_ori = abs(delta_angle_norm(np.arctan2(y_t - self.y_p, x_t - self.x_p) - self.o_p )) / pi
         # r = (1 - gap_dis - gap_ori * 0.2)
-        r = (1 - gap_dis)
+        # r = (1 - gap_dis)
         # r = 
         # print(distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT), 0.5 * self.err_angle()/180)
         # return r 
-        # r = torch.Tensor([0.0])
+        r = torch.Tensor([0.0])
         # print(gap_dis,"  ", gap_ori)
-        return r, distance(self.x_p, self.y_p, x_t, y_t) - self.p_list[p_target].r
+        
+        # return the distance to the nearest object
+        ret_distance = self.nearest_obj()
+        
+        return r, ret_distance
+
+    def nearest_obj(self):
+        min_dis = 1000
+        for i in range(len(self.p_list)):
+            x_t, y_t = self.p_list[i].x, self.p_list[i].y
+            min_dis = min(min_dis, distance(x_t, y_t, self.x_p, self.y_p))
+        return min_dis
 
     def get_reward(self):
         # d_wall = min(self.x_p/WIDTH, (WIDTH-self.x_p)/WIDTH, (self.y_p)/HEIGHT, (HEIGHT-self.y_p)/HEIGHT)
