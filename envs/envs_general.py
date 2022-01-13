@@ -352,7 +352,7 @@ class PassiveHapticsEnv(object):
         for i in range(len(self.v_list)):
             dis_obj_v.append(distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[i].x/WIDTH_ALL, self.v_list[i].y/HEIGHT_ALL)) # dis from v_avator to each v_obj
             ori_obj_v.append(abs(delta_angle_norm(self.o_v - np.arctan2(self.v_list[i].y - self.y_v, self.v_list[i].x - self.x_v))))
-            unalign_obj_v.append(torch.exp(toTensor(-5*(dis_obj_v[i] + 3 * ori_obj_v[i]))))
+            unalign_obj_v.append(torch.exp(toTensor(-(dis_obj_v[i] + 3 * ori_obj_v[i]))))
         
         # possibility to goto each V_obj 
         sum_possibility = sum(unalign_obj_v)
