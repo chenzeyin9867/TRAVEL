@@ -207,8 +207,6 @@ class MLPBase(NNBase):
             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
         # self.actor = nn.ModuleList(
         #     [init_(nn.Linear(num_inputs, hidden_size))] + [nn.ReLU()] + [nn.Linear(hidden_size, hidden_size) for _ in range(width-1)] 
@@ -220,8 +218,6 @@ class MLPBase(NNBase):
             # init_(nn.Linear(num_inputs, hidden_size)), nn.ReLU(),
             # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU())
             init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh(),
             init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
