@@ -177,8 +177,8 @@ class PassiveHapticsEnv(object):
         tmp_x = self.x_p + torch.cos(self.o_p) * delta_dis
         tmp_y = self.y_p + torch.sin(self.o_p) * delta_dis
         if outbound(tmp_x, tmp_y):
-            # self.o_p = norm(self.o_p + PI)
-            self.o_p = self.compute_dir_to_obj()
+            self.o_p = norm(self.o_p + PI)
+            # self.o_p = self.compute_dir_to_obj()
             self.obs.extend(self.num_frame_stack * self.get_obs())
             return False
         else:
@@ -470,7 +470,7 @@ def norm(theta):
 
 
 def outbound(x, y):
-    if x <= 0 or x >= WIDTH or y <= 0 or y >= HEIGHT:
+    if x <= 0 or x >= WIDTH or y <= 0 or y >= HEIGHT or (x >= 6  and x <= 10 and y >= 0 and y <= 4):
         return True
     else:
         return False
