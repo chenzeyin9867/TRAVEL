@@ -1,4 +1,5 @@
 import os
+from site import USER_SITE
 import gym
 import numpy as np
 import torch
@@ -64,6 +65,7 @@ class PassiveHapticsEnv(object):
         # self.p_list = [obj(4.0, 4.0, 0.5), obj(12.0, 4.0, 0.5), obj(8.0, 12.0, 0.5)]
         # self.p_list = [obj(1.5, 4.0, 0.5), obj(6.5, 6.0, 0.5), obj(4, 1.5, 0.5)]
         self.p_list = [obj(7.0, 1.0, 0.5)]
+        self.obstacle_list = [obstacle("square", 3.0, 3.0, 2.0)]
         # virtual avator configure, x, y, orientation
         self.pos_list = [[0, HEIGHT_ALL/2, 0], [WIDTH_ALL/2, 0, pi/2], 
                         [WIDTH_ALL, HEIGHT_ALL/2, pi], [WIDTH_ALL/2, HEIGHT_ALL, -pi/2]]
@@ -368,9 +370,10 @@ class PassiveHapticsEnv(object):
             for j in range(len(self.p_list)):
                 d = self.get_reward_distance(i, j)
                 o = self.get_reward_orientation(i, j)
+                intersect = self.get_reward_intersect(j)
                 # print(o, d)
-                if (o + 3 * d) < unalign_min:
-                    unalign_min = o + 3 * d
+                if (o + 3 * d + intersect) < unalign_min:
+                    unalign_min = o + 3 * d + intersect
                     p_obj_ind = j
             self.p_prop_list[i] = p_obj_ind
             penalty += unalign_min * possibility_list[i]
@@ -423,8 +426,39 @@ class PassiveHapticsEnv(object):
         return abs(delta_angle_norm(ang1 - ang2))/PI
     # This method scale the orientation error
     # def get_reward_orientation(self):
+    
+    
+    def get_reward_intersect(self, j):
+        prop = self.p_list[j]
+        if self.isIntersectProp(prop):
+            return 1.0
+        else:
+            return 0.0
         
 
+    def isIntersectProp(self, prop):
+        flag = False
+        for obstacle in self.obstacle_list:
+            if self.isIntersectObstacle(self, prop, obstacle):
+                return True
+        return False
+            
+    def isIntersectObstacle(self, prop, obstacle):
+        # whether two linesegment intersect
+        if obstacle.m_name == "square": # test each edge
+            heading_seg = Segment(Point(self.x_p, self.y_p), Point(prop.x, prop.y))
+            left_b  = Point(obstacle.x - obstacle.r, obstacle.y - obstacle.r)
+            left_u  = Point(obstacle.x - obstacle.r, obstacle.y + obstacle.r)
+            right_u = Point(obstacle.x + obstacle.r, obstacle.y + obstacle.r)
+            right_b = Point(obstacle.x + obstacle.r, obstacle.y - obstacle.r)
+            # Four segment
+            l_seg = Segment(left_u, left_b)
+            r_seg = Segment(right_u, right_b)
+            u_seg = Segment(left_u, right_u)
+            b_seg = Segment(left_b, right_b)
+            return heading_seg.is_cross(l_seg) or heading_seg.is_cross(r_seg) or heading_seg.is_cross(u_seg) or heading_seg.is_cross(b_seg)
+        
+    
 
     '''
     scale the angle into 0-pi
@@ -527,3 +561,73 @@ class obj:
         self.x = x
         self.y = y
         self.r = r
+        
+
+# Obstacle in environment, have shape of rectangle and circle
+class obstacle:
+    def __init__(self, m_type, x, y, r):
+        m_name = m_type
+        m_x = x
+        m_y = y
+        m_r = r
+
+
+def multiply(v1, v2):  
+    """ 
+    计算两个向量的叉积 
+    """  
+    return v1.x*v2.y - v2.x*v1.y  
+  
+  
+class Point:  
+    def __init__(self, x, y):  
+        self.x = x  
+        self.y = y  
+  
+    def __sub__(self, other):  
+        """ 
+        重载减法运算，计算两点之差，实际上返回的表示该点到另一点的向量 
+        :param other: 另一个点 
+        :return: 该点到另一点的向量 
+        """  
+        return Point(self.x-other.x, self.y-other.y)  
+  
+  
+class Segment:  
+    def __init__(self, point1, point2):  
+        self.point1 = point1  
+        self.point2 = point2  
+  
+    def straddle(self, another_segment):  
+        """ 
+        :param another_segment: 另一条线段 
+        :return: 如果另一条线段跨立该线段，返回True；否则返回False 
+        """  
+        v1 = another_segment.point1 - self.point1  
+        v2 = another_segment.point2 - self.point1  
+        vm = self.point2 - self.point1  
+        if multiply(v1, vm) * multiply(v2, vm) <= 0:  
+            return True  
+        else:  
+            return False  
+  
+    def is_cross(self, another_segment):  
+        """ 
+        :param another_segment: 另一条线段 
+        :return: 如果两条线段相互跨立，则相交；否则不相交 
+        """  
+        if self.straddle(another_segment) and another_segment.straddle(self):  
+            return True  
+        else:  
+            return False  
+  
+    def cross(self, another_segment):  
+        if self.is_cross(another_segment):  
+            print('两线段相交.')  
+        else:  
+            print('两线段不相交.')  
+        plt.plot([self.point1.x, self.point2.x], [self.point1.y, self.point2.y])  
+        plt.plot([another_segment.point1.x, another_segment.point2.x],  
+                 [another_segment.point1.y, another_segment.point2.y])  
+        plt.show()  
+
