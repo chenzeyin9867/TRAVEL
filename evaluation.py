@@ -12,7 +12,7 @@ from tqdm import trange
 from matplotlib.backends.backend_pdf import PdfPages
 from running_mean_std import RunningMeanStd
 from envs.model import Policy
-from utils import plot_hist
+from utils import plot_hist, drawPath
 from envs.arguments import get_args
 import numpy as np
 
@@ -139,7 +139,7 @@ if __name__ == '__main__':
         os.makedirs(log_dir)
     
     plot_hist(log_dir, rets["gt_l"], rets["gr_l"], rets["gc_l"])
-
+    drawPath(ret["vx"], ret["vy"], ret["x"], ret["y"], rets["x"], rets["y"], envs, args, -100)
     print(args.env_name)
     print("With Alignment:\tPDE_MEAN:%.4f\tPDE_MED:%.4f\treset:%d" % (rets["pde"], rets["pde_med"], rets["collide"]))
     print("No   Alignment:\tPDE_MEAN:%.4f\tPDE_MED:%.4f\treset:%d" % (ret["pde"],  ret["pde_med"] , ret["collide"] ))

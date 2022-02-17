@@ -12,8 +12,8 @@ from running_mean_std import RunningMeanStd
 
 REWARD_SCALE = False
 VELOCITY = 1.0 / 50.0
-HEIGHT, WIDTH = 16 , 16
-HEIGHT_ALL, WIDTH_ALL = 20.0, 20.0
+HEIGHT, WIDTH = 8 , 8
+HEIGHT_ALL, WIDTH_ALL = 10.0, 10.0
 FRAME_RATE = 50
 PI = np.pi
 PENALTY = torch.Tensor([1.0])
@@ -53,16 +53,17 @@ class PassiveHapticsEnv(object):
     # configure the physical and virtual space
     def configure_space(self):
         # virtual space configure
-        self.v_list = [obj(5.0, 5.0, 0.5), obj(15, 5, 0.5), obj(5, 15, 0.5), obj(15, 15, 0.5)]
+        # self.v_list = [obj(5.0, 5.0, 0.5), obj(15, 5, 0.5), obj(5, 15, 0.5), obj(15, 15, 0.5)]
+        self.v_list = [obj(1.0, 1.0, 0.5)]
         # self.v_list = [obj(2.5, 2.5, 0.5), obj(7.5,2.5, 0.5), obj(2.5,7.5, 0.5), obj(7.5, 7.5, 0.5)]
         # self.v_list = [obj(2.0, 2.0, 0.5), obj(8.0,2.0, 0.5), obj(2.0,8.0, 0.5), obj(8.0, 8.0, 0.5)]
         # self.v_list = [obj(10.0, 10.0, 0.5)]
     
         # physical space configure
         # p_height, p_width = 10.0, 10.0
-        self.p_list = [obj(4.0, 4.0, 0.5), obj(12.0, 4.0, 0.5), obj(8.0, 12.0, 0.5)]
+        # self.p_list = [obj(4.0, 4.0, 0.5), obj(12.0, 4.0, 0.5), obj(8.0, 12.0, 0.5)]
         # self.p_list = [obj(1.5, 4.0, 0.5), obj(6.5, 6.0, 0.5), obj(4, 1.5, 0.5)]
-        # self.p_list = [obj(10.0, 10.0, 0.5)]
+        self.p_list = [obj(7.0, 1.0, 0.5)]
         # virtual avator configure, x, y, orientation
         self.pos_list = [[0, HEIGHT_ALL/2, 0], [WIDTH_ALL/2, 0, pi/2], 
                         [WIDTH_ALL, HEIGHT_ALL/2, pi], [WIDTH_ALL/2, HEIGHT_ALL, -pi/2]]
@@ -470,7 +471,9 @@ def norm(theta):
 
 
 def outbound(x, y):
-    if x <= 0 or x >= WIDTH or y <= 0 or y >= HEIGHT or (x >= 6  and x <= 10 and y >= 0 and y <= 4):
+    # if x <= 0 or x >= WIDTH or y <= 0 or y >= HEIGHT or (x >= 6  and x <= 10 and y >= 0 and y <= 4):
+    #     return True
+    if x <= 0 or x >= WIDTH or y <= 0 or y >= HEIGHT:
         return True
     else:
         return False
