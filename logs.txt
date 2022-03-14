@@ -1,0 +1,2 @@
+3.14：
+    当Reset后采用facemid方案比facevertical要优
