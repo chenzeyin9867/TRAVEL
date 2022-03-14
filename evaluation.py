@@ -24,6 +24,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
     collide     = 0
     pde         = 0     # Physical Distance    Error
     poe         = 0     # Physical Orientation Error
+    distance    = 0.0   # Traveled Virtual Distance
     std_list1   = []
     std_list2   = []
     std_list3   = []
@@ -40,7 +41,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
     for t in trange(0, num):
         env.reset()
         if actor_critic != None:
-            ret, pe, pe_l, oe, t_cnt, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c = env.step_specific_path(actor_critic, running_mean_std, t, gain=True)
+            ret, pe, pe_l, oe, t_cnt, gt, gr, gc, x, y, vx, vy, std1, std2, std3, c, dis = env.step_specific_path(actor_critic, running_mean_std, t, gain=True)
             std_list1.extend(std1)
             std_list2.extend(std2)
             std_list3.extend(std3)
@@ -49,13 +50,14 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
             gc_list.extend(gc)
 
         else: # None
-            ret, pe, pe_l, oe, t_cnt, _, _, _ ,x, y, vx, vy, _, _, _, c = env.step_specific_path(None, None, t, gain=False)    
+            ret, pe, pe_l, oe, t_cnt, _, _, _ ,x, y, vx, vy, _, _, _, c, dis = env.step_specific_path(None, None, t, gain=False)    
   
         reward += ret
         collide += c     
         pde += pe
         poe += oe # orientation error
         touch_cnt += t_cnt
+        distance += dis
         x_l.append(x)
         y_l.append(y)
         vx_l.append(vx)
@@ -66,8 +68,9 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
         
     
     reward = (reward / num).item()
-    pde    = (pde    / touch_cnt)
+    pde    = (pde    / touch_cnt) if touch_cnt > 0 else pde
     poe    = (poe    / num)
+    dis_ret= (distance / collide)
     std1   = np.mean(std_list1).item()
     std2   = np.mean(std_list2).item()
     std3   = np.mean(std_list3).item()
@@ -79,7 +82,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
     # print(pde_list)
     pde_med = np.median(pde_list)
     rets ={
-        "reward": reward, "pde" : pde,   "poe" : poe,    "collide": collide, "pde_med": pde_med,
+        "reward": reward, "pde" : pde,   "poe" : poe,    "collide": collide, "pde_med": pde_med, "dis_reset" : dis_ret,
         "std1"  : std1,   "std2": std2,  "std3": std3,
         "gt"    : gt,     "gr"  : gr ,   "gc"  : gc,
         "x"     : x_l,    "y"   : y_l,   "vx"  : vx_l,    "vy"     : vy_l   ,
@@ -141,8 +144,8 @@ if __name__ == '__main__':
     plot_hist(log_dir, rets["gt_l"], rets["gr_l"], rets["gc_l"])
     drawPath(ret["vx"], ret["vy"], ret["x"], ret["y"], rets["x"], rets["y"], envs, args, -100)
     print(args.env_name)
-    print("With Alignment:\tPDE_MEAN:%.4f\tPDE_MED:%.4f\treset:%d" % (rets["pde"], rets["pde_med"], rets["collide"]))
-    print("No   Alignment:\tPDE_MEAN:%.4f\tPDE_MED:%.4f\treset:%d" % (ret["pde"],  ret["pde_med"] , ret["collide"] ))
+    print("With Alignment:\tPDE_MEAN:%.4f\tPDE_MED:%.4f\treset:%d\tDistance_per_reset:%.2f" % (rets["pde"], rets["pde_med"], rets["collide"], rets["dis_reset"]))
+    print("No   Alignment:\tPDE_MEAN:%.4f\tPDE_MED:%.4f\treset:%d\tDistance_per_reset:%.2f" % (ret["pde"],  ret["pde_med"] , ret["collide"],  ret["dis_reset"] ))
  
     # reward, r_none, distance_physical, dis_nosrl, angle_srl, angle_none, flag, r_1, r_2, r_3, std_list1, std_list2, std_list3, gt_list, gr_list, gc_list, collide, collide_, collide_frank = PassiveHapticRdwEvaluateFrank(actor_critic, args.seed,
     #                                      1, 0.99, None, None, 10, None, 0, args.env_name, False, num, draw, evalType=2)

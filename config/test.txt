@@ -1,7 +1,7 @@
 use-linear-lr-decay         =     True
 env-name                    =     113_h20_Multiple_gamma0.99_lr0.0003_r0.5-r_unagin_o+3d_div10_b8192_clip0.1_p1.0_final0_nearst_Constraint_ppo8_ce0.005_layer4_hs256
 data                        =     dataset/muti_target_Center_19_LargeAngle/h20w20
-test-frames                 =     500
+test-frames                 =     100
 draw                        =     False
 path-type                   =     0
 net-width                   =     2

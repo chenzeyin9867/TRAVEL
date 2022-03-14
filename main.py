@@ -89,8 +89,6 @@ def main():
             # Sample actions
             with torch.no_grad():
                 obs = rollouts.obs[step]
-                if OBS_NORM:                # using obs norm
-                    obs = running_mean_std.process(obs)
                 value, action_mean, action_std = actor_critic.act(obs)
                 dist = FixedNormal(action_mean, action_std)
                 action = dist.rsample()
@@ -160,8 +158,8 @@ def main():
                 print(args.env_name)
                 lr = args.lr - (args.lr * (j / float(num_updates)))
                 print( "Epoch_%d/%d\t" % (j, num_updates), "lr:%.8f" % (lr), 
-                    "\tr_phrl:%.2f\tr_none:%.2f\tpde_phrl:%.2f\tpde_none:%.2f\tpde_phrl_med:%.2f\tpde_none_med:%.2f\ttouch_phrl:%.2f\ttouch_none:%.2f"
-                        %(rets["reward"], rets_["reward"], rets["pde"], rets_["pde"], rets["pde_med"], rets_["pde_med"], rets["touch_cnt"], rets_["touch_cnt"]))
+                    "\tr_phrl:%.2f\tr_none:%.2f\tpde_phrl:%.2f\tpde_none:%.2f\tpde_phrl_med:%.2f\tpde_none_med:%.2f\tpde_dis:%.2f\tnone_dis:%.2f"
+                        %(rets["reward"], rets_["reward"], rets["pde"], rets_["pde"], rets["pde_med"], rets_["pde_med"], rets["dis_reset"], rets_["dis_reset"] ))
                 print("std:%.3f %.3f %.3f\t\tgt:%.3f\tgr:%.3f\tgc:%.3f\t"
                     % (rets["std1"], rets["std2"], rets["std3"], rets["gt"], rets["gr"], rets["gc"]), end="")
                 print("reset_phrl:", rets["collide"], " reset_none:", rets_["collide"], "\t|t:%.2f " % (time.time() - t_start)) 
@@ -177,6 +175,7 @@ def main():
         writer1.add_scalar('Metric/pde', rets["pde"], global_step=j)
         writer1.add_scalar("Metric/pde_med", rets["pde_med"], global_step=j)
         writer1.add_scalar('Metric/touch_cnt', rets["touch_cnt"], global_step=j)
+        writer1.add_scalar("Metric/pde_dis", rets["dis_reset"], global_step=j)
         writer1.add_scalar('Metric/phrl_reward', rets["reward"], global_step=j)
         writer1.add_scalar("Metric/explained_var", explained_variance, global_step=j)
         # Gains

@@ -1,7 +1,9 @@
+from code import interact
 import os
 from site import USER_SITE
 import gym
 import numpy as np
+from sqlalchemy import true
 import torch
 from gym.spaces.box import Box
 from envs.distributions import FixedNormal
@@ -13,8 +15,12 @@ from running_mean_std import RunningMeanStd
 
 REWARD_SCALE = False
 VELOCITY = 1.0 / 50.0
-HEIGHT, WIDTH = 8 , 8
-HEIGHT_ALL, WIDTH_ALL = 10.0, 10.0
+# HEIGHT, WIDTH = 8 , 8
+# HEIGHT_ALL, WIDTH_ALL = 10.0, 10.0
+HEIGHT, WIDTH = 16 , 16
+HEIGHT_ALL, WIDTH_ALL = 20.0, 20.0
+# HEIGHT, WIDTH = 12, 12
+# HEIGHT_ALL, WIDTH_ALL = 12, 17
 FRAME_RATE = 50
 PI = np.pi
 PENALTY = torch.Tensor([1.0])
@@ -54,18 +60,20 @@ class PassiveHapticsEnv(object):
     # configure the physical and virtual space
     def configure_space(self):
         # virtual space configure
-        # self.v_list = [obj(5.0, 5.0, 0.5), obj(15, 5, 0.5), obj(5, 15, 0.5), obj(15, 15, 0.5)]
-        self.v_list = [obj(1.0, 1.0, 0.5)]
+        self.v_list = [obj(5.0, 5.0, 0.5), obj(15, 5, 0.5), obj(5, 15, 0.5), obj(15, 15, 0.5)]
+        # self.v_list = [obj(1.0, 1.0, 0.5)]
         # self.v_list = [obj(2.5, 2.5, 0.5), obj(7.5,2.5, 0.5), obj(2.5,7.5, 0.5), obj(7.5, 7.5, 0.5)]
         # self.v_list = [obj(2.0, 2.0, 0.5), obj(8.0,2.0, 0.5), obj(2.0,8.0, 0.5), obj(8.0, 8.0, 0.5)]
         # self.v_list = [obj(10.0, 10.0, 0.5)]
-    
+        # self.v_list = [obj(3.0, 2.0, 0.5), obj(3.0, 10.0, 0.5), obj(14.0, 2.0, 0.5)]
         # physical space configure
         # p_height, p_width = 10.0, 10.0
-        # self.p_list = [obj(4.0, 4.0, 0.5), obj(12.0, 4.0, 0.5), obj(8.0, 12.0, 0.5)]
+        # self.p_list = [obj(6.0, 2.0, 0.5), obj(2.0, 10.0, 0.5), obj(10.0, 10.0, 0.5)]
         # self.p_list = [obj(1.5, 4.0, 0.5), obj(6.5, 6.0, 0.5), obj(4, 1.5, 0.5)]
-        self.p_list = [obj(7.0, 1.0, 0.5)]
-        self.obstacle_list = [obstacle("square", 3.0, 3.0, 2.0)]
+        # self.p_list = [obj(7.0, 1.0, 0.5), obj(1.0, 7.0, 0.5)]
+        self.p_list = [obj(4.0, 4.0, 0.5), obj(8.0, 12.0, 0.5), obj(12.0, 4.0, 0.5)]
+        # self.obstacle_list = [obstacle("square", 8.0, 3.0, 2.0)]
+        self.obstacle_list = []
         # virtual avator configure, x, y, orientation
         self.pos_list = [[0, HEIGHT_ALL/2, 0], [WIDTH_ALL/2, 0, pi/2], 
                         [WIDTH_ALL, HEIGHT_ALL/2, pi], [WIDTH_ALL/2, HEIGHT_ALL, -pi/2]]
@@ -112,6 +120,8 @@ class PassiveHapticsEnv(object):
         k = self.action_repeat          # action repetition
         reward = torch.Tensor([0.0])    # initial reward for this step period
         for ep in range(k):             # for every iter, get the virtual path info, and steering
+            if self.v_step_pointer == len(self.v_path): # Ends the v_path
+                break
             self.vPathUpdate()
             signal = self.physical_step(gt, gr, gc)  # steering the physical env using the actions
             # signal = self.physical_step_eval(gt, gr, gc)
@@ -119,17 +129,14 @@ class PassiveHapticsEnv(object):
             
             if not signal: # Collide the boundary 
                 reward = -PENALTY
-                break
-            
-            if self.v_step_pointer >= len(self.v_path) - 1: # Ends the v_path
-                break
-            if self.touch != -1:
-                reward, _ = self.final_reward()                            
+                # signal = True
+                break                           
             elif ep == 0:                                                      
                 reward = self.get_reward()                  # Only compute reward once due to the action repeat strategy
 
-        obs = self.obs[OBSERVATION_SPACE:]                  # update the observation after k steps 
+        obs = self.obs[-OBSERVATION_SPACE * (self.num_frame_stack - 1):]
         obs.extend(self.get_obs())
+
         self.obs = obs
         obs = toTensor(obs)
         
@@ -140,6 +147,9 @@ class PassiveHapticsEnv(object):
             bad_mask = 1
             self.reset()
             return obs, ret_reward, [1], [bad_mask]
+        # if self.v_step_pointer >= len(self.v_path) - 1:
+        #     self.reset()
+        #     return obs, ret_reward, [1], [0]
         elif signal and self.v_step_pointer >= len(self.v_path) - 1: # successfully end one episode, get the final reward
             self.reset()
             return obs, ret_reward, [1], [0]
@@ -155,12 +165,22 @@ class PassiveHapticsEnv(object):
         delta_dis = VELOCITY / gt
         delta_curvature = gc * delta_dis
         delta_rotation = self.delta_direction_per_iter / gr
+        self.o_p = norm(self.o_p + delta_curvature + delta_rotation)
         self.x_p = self.x_p + torch.cos(torch.Tensor([self.o_p])) * delta_dis
         self.y_p = self.y_p + torch.sin(torch.Tensor([self.o_p])) * delta_dis
-        if outbound(self.x_p, self.y_p):
+        tmp_x = self.x_p + torch.cos(self.o_p) * delta_dis
+        tmp_y = self.y_p + torch.sin(self.o_p) * delta_dis
+        if outbound(tmp_x, tmp_y) or self.insideObstacle(tmp_x, tmp_y):
             return False
-        self.o_p = norm(self.o_p + delta_curvature + delta_rotation)
+        
         return True
+
+    def insideObstacle(self, tmp_x, tmp_y):
+        for obstacle in self.obstacle_list:
+            if tmp_x >= obstacle.x - obstacle.r and tmp_x <= obstacle.x + obstacle.r and tmp_y >= obstacle.y - obstacle.r and tmp_y <= obstacle.y + obstacle.r:
+                return True
+        return False
+            
 
     '''
     when collide with the bundary in eval type, the user just reset instead of end the episode
@@ -168,20 +188,14 @@ class PassiveHapticsEnv(object):
     def physical_step_eval(self, gt, gr, gc):
         delta_curvature = gc * (VELOCITY / gt)
         delta_rotation = self.delta_direction_per_iter / gr
-        delta_angle = 0
-        if abs(delta_curvature) > abs(delta_rotation):
-            delta_angle = delta_curvature
-        else:
-            delta_angle = delta_rotation
-        # print(gt, gr, gc, delta_curvature, delta_rotation)
         self.o_p = norm(self.o_p + delta_curvature + delta_rotation)
         # self.o_p = norm(self.o_p + delta_angle)
         delta_dis = VELOCITY / gt
         tmp_x = self.x_p + torch.cos(self.o_p) * delta_dis
         tmp_y = self.y_p + torch.sin(self.o_p) * delta_dis
-        if outbound(tmp_x, tmp_y):
-            self.o_p = norm(self.o_p + PI)
-            # self.o_p = self.compute_dir_to_obj()
+        if outbound(tmp_x, tmp_y) or self.insideObstacle(tmp_x, tmp_y):
+            # self.o_p = norm(self.o_p + PI)
+            self.o_p = self.compute_dir_to_obj()
             self.obs.extend(self.num_frame_stack * self.get_obs())
             return False
         else:
@@ -229,6 +243,7 @@ class PassiveHapticsEnv(object):
         gc_l = []
         self.v_path = self.path_file[ind]
         self.v_step_pointer = 0
+        dis = 0.0
 
         self.x_v, self.y_v, self.o_v, self.delta_direction_per_iter, _ = self.v_path[self.v_step_pointer]
         self.x_p, self.y_p, self.o_p = self.init_eval_state(ind)
@@ -263,12 +278,9 @@ class PassiveHapticsEnv(object):
                 for m in range(self.action_repeat):
                     if i == len(self.v_path):
                         signal = False
-                        # self.reward += self.final_reward()
-                        break
-                    # signal = self.physical_step(gt, gr, gc)
-                    if not signal:
                         break
                     signal = self.physical_step_eval(gt, gr, gc)
+                    dis += VELOCITY
                     if i < len(self.v_path):
                         self.vPathUpdate()
                     i += 1
@@ -296,7 +308,7 @@ class PassiveHapticsEnv(object):
         vy_l = self.v_path[:, 1] 
         ave_gap_dis = gap_dis # average pde
             
-        return self.reward, ave_gap_dis, pde_list, 1, touch_cnt, gt_l, gr_l, gc_l, x_l, y_l, vx_l, vy_l, std1, std2, std3, collide
+        return self.reward, ave_gap_dis, pde_list, 1, touch_cnt, gt_l, gr_l, gc_l, x_l, y_l, vx_l, vy_l, std1, std2, std3, collide, dis
 
     def err_angle(self):
         # return abs(self.o_x - self.o_t_p) * 180.0 / PI
@@ -304,10 +316,10 @@ class PassiveHapticsEnv(object):
         return abs(delta_angle_norm(self.o_p - self.o_t_p)) * 180.0 / PI
 
     def final_reward(self):
-        p_target = self.p_prop_list[int(self.touch)]
-        x_t, y_t  = self.p_list[p_target].x, self.p_list[p_target].y
+        #p_target = self.p_prop_list[int(self.touch)]
+        #x_t, y_t  = self.p_list[p_target].x, self.p_list[p_target].y
         # r = 10 * (1 - math.pow(distance(self.x_p/WIDTH, self.y_p/HEIGHT, self.x_t_p/WIDTH, self.y_t_p/HEIGHT), 1))
-        gap_dis = distance(self.x_p/WIDTH, self.y_p/HEIGHT, x_t/WIDTH, y_t/HEIGHT)
+        #gap_dis = distance(self.x_p/WIDTH, self.y_p/HEIGHT, x_t/WIDTH, y_t/HEIGHT)
         # gap_ori = abs(delta_angle_norm(np.arctan2(y_t - self.y_p, x_t - self.x_p) - self.o_p )) / pi
         # r = (1 - gap_dis - gap_ori * 0.2)
         # r = (1 - gap_dis)
@@ -370,9 +382,10 @@ class PassiveHapticsEnv(object):
             for j in range(len(self.p_list)):
                 d = self.get_reward_distance(i, j)
                 o = self.get_reward_orientation(i, j)
-                intersect = self.get_reward_intersect(j)
+                intersect = 0
+                # intersect = self.get_reward_intersect(j)
                 # print(o, d)
-                if (o + 3 * d + intersect) < unalign_min:
+                if (o + 3 *d + intersect) < unalign_min:
                     unalign_min = o + 3 * d + intersect
                     p_obj_ind = j
             self.p_prop_list[i] = p_obj_ind
@@ -385,9 +398,12 @@ class PassiveHapticsEnv(object):
         print("virtual:", self.x_v, " ", self.y_v, " ",  self.o_v)
 
     def get_reward_distance(self, v, p):
-        d1 = distance(self.x_p/WIDTH,     self.y_p/HEIGHT,     self.p_list[p].x/WIDTH,     self.p_list[p].y/  HEIGHT)
-        d2 = distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[v].x/WIDTH_ALL, self.v_list[v].y/  WIDTH_ALL)
-        return toTensor(abs(d1 - d2))
+        # d1 = distance(self.x_p/WIDTH,     self.y_p/HEIGHT,     self.p_list[p].x/WIDTH,     self.p_list[p].y/  HEIGHT)
+        # d2 = distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[v].x/WIDTH_ALL, self.v_list[v].y/  WIDTH_ALL)
+        d1 = distance(self.x_p, self.y_p, self.p_list[p].x, self.p_list[p].y)
+        d2 = distance(self.x_v, self.y_v, self.v_list[v].x, self.v_list[v].y)
+        
+        return toTensor(abs(d1 - d2) / (WIDTH_ALL * 1.41))
 
 
     def get_reward_wall(self):
@@ -437,15 +453,14 @@ class PassiveHapticsEnv(object):
         
 
     def isIntersectProp(self, prop):
-        flag = False
         for obstacle in self.obstacle_list:
-            if self.isIntersectObstacle(self, prop, obstacle):
+            if self.isIntersectObstacle(prop, obstacle):
                 return True
         return False
             
     def isIntersectObstacle(self, prop, obstacle):
         # whether two linesegment intersect
-        if obstacle.m_name == "square": # test each edge
+        if obstacle.name == "square": # test each edge
             heading_seg = Segment(Point(self.x_p, self.y_p), Point(prop.x, prop.y))
             left_b  = Point(obstacle.x - obstacle.r, obstacle.y - obstacle.r)
             left_u  = Point(obstacle.x - obstacle.r, obstacle.y + obstacle.r)
@@ -491,8 +506,8 @@ def split(action):
     a = 1.060 + 0.2   * a
     b = 0.955 + 0.285 * b
     c = 0.13 * c
-    # a = 1 + 0.5 * a
-    # b = 1 + 0.5 * b
+    # a = 2.2 + 2 * a
+    # b = 2.2 + 2 * b
     # c = 0.5 * c 
     return a, b, c
 
@@ -511,6 +526,7 @@ def outbound(x, y):
         return True
     else:
         return False
+    
 
 
 def min_length_direction(x, y, a, b, cos):  # cause the heading has the direction
@@ -565,11 +581,11 @@ class obj:
 
 # Obstacle in environment, have shape of rectangle and circle
 class obstacle:
-    def __init__(self, m_type, x, y, r):
-        m_name = m_type
-        m_x = x
-        m_y = y
-        m_r = r
+    def __init__(self, m_type, m_x, m_y, m_r):
+        self.name = m_type
+        self.x = m_x
+        self.y = m_y
+        self.r = m_r
 
 
 def multiply(v1, v2):  

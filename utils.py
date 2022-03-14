@@ -21,14 +21,16 @@ def drawPath(vx_l, vy_l, x_none_l, y_none_l, x_l, y_l, env, args, epoch):
                 plt_none = plt.subplot(1, 2, 1)
                 plt_none.set_title('virtual')
                 plt_srl.set_title('physical')
-                # plt_srl.add_patch(
-                #     patches.Rectangle(
-                #         (6,0),
-                #         4,
-                #         4,
-                #         color='k'
-                #     )
-                # )
+                if len(env.obstacle_list) > 0:
+                    r = env.obstacle_list[0].r
+                    plt_srl.add_patch(
+                        patches.Rectangle(
+                            (env.obstacle_list[0].x - r,env.obstacle_list[0].y - r),
+                            env.obstacle_list[0].r * 2,
+                            env.obstacle_list[0].r * 2,
+                            color='k'
+                        )
+                    )
                 plt_srl.axis('scaled')
                 plt_srl.axis([0.0, WIDTH, 0.0, HEIGHT])
                 plt_none.axis('scaled')

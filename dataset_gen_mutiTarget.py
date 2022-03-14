@@ -19,12 +19,13 @@ class obj:
         self.y = y
         self.r = r
 # virtual space configure
-v_height, v_width = 10.0, 10.0
+v_height, v_width = 12.0, 17.0
 # v_obj_list = [obj(10.0, 10.0, 0.5)]
 # v_obj_list = [obj(2.0, 2.0, 0.5), obj(8.0, 2.0, 0.5), obj(2.0, 9.0, 0.5), obj(8.0, 9.0, 0.5)]
 # v_obj_list = [obj(2.5, 2.5, 0.5), obj(7.5, 2.5, 0.5), obj(2.5, 7.5, 0.5), obj(7.5, 7.5, 0.5)]
 # v_obj_list = [obj(5.0, 5.0, 0.5), obj(15, 5, 0.5), obj(5, 15, 0.5), obj(15, 15, 0.5)]
-v_obj_list = [obj(1.0, 1.0, 0.5)]
+# v_obj_list = [obj(1.0, 1.0, 0.5)]
+v_obj_list = [obj(3.0, 2.0, 0.5), obj(3.0, 10.0, 0.5), obj(14.0, 2.0, 0.5)]
 # physical space configure
 p_height, p_width = 10.0, 10.0
 p_obj_list = [obj(3.0, 3.0, 0.5), obj(7.0,3.0, 0.5), obj(5.0, 7.0, 0.5)]
@@ -68,7 +69,7 @@ def outbound(x, y):
 if __name__ == '__main__':
     result = []
     len_ = []
-    dir = os.path.join("./dataset/single_target_Center_217", "h" + str(int(v_height))+'w'+str(int(v_width)))
+    dir = os.path.join("./dataset/h12w17", "h" + str(int(v_height))+'w'+str(int(v_width)))
     if not os.path.exists(dir):
         os.makedirs(dir)    
     pathnum = 500 if mode == 'eval' else 50000
@@ -95,6 +96,7 @@ if __name__ == '__main__':
         choose_obj = 0
         for t in range(3600):
             if turn_flag == 0:
+                # print("Len:", len(obj_set))
                 if len(obj_set) == 0:
                     break
                 rd = random.randint(0,1)
@@ -103,11 +105,6 @@ if __name__ == '__main__':
                     turn_flag = np.random.randint(step_low, step_high)
                     delta_direction = np.clip(random.normalvariate(0, 45), -180, 180)
                     delta_direction = np.random.random() * 2 * pi - pi
-                    # delta_direction = delta_direction * pi / 180.
-                    # random_radius = 0.5
-                    # num_change_direction = (delta_direction * random_radius / velocity) if random_radius != 0 else 1
-                    # num_change_direction = 1
-                    # delta_direction_per_iter = delta_direction / num_change_direction
                     delta_direction_per_iter = 1.5 * pi / 180.0
                     if delta_direction < 0:
                         delta_direction_per_iter = - delta_direction_per_iter
@@ -116,6 +113,7 @@ if __name__ == '__main__':
                 else:
                     # choose a unselected obj
                     obj_ind = choice(obj_set)
+                    # print(obj_ind)
                     obj_set.remove(obj_ind)
                     
                     tar_x, tar_y = v_obj_list[obj_ind].x, v_obj_list[obj_ind].y
@@ -148,8 +146,6 @@ if __name__ == '__main__':
             x = x + velocity * np.cos(o)
             y = y + velocity * np.sin(o)
             if outbound(x, y):
-                # Epoch -= 1
-                # collide = 1
                 break
             x_list.append(x)
             y_list.append(y)
@@ -157,7 +153,7 @@ if __name__ == '__main__':
             o_delta.append(delta_direction_per_iter)
             if current_obj != -1 and turn_flag == 0:
                 tourch_list.append(current_obj)
-                break
+                # break
             else:
                 tourch_list.append(-1)
         if collide == 1:
