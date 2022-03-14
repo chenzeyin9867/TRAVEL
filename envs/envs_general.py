@@ -71,7 +71,7 @@ class PassiveHapticsEnv(object):
         # self.p_list = [obj(6.0, 2.0, 0.5), obj(2.0, 10.0, 0.5), obj(10.0, 10.0, 0.5)]
         # self.p_list = [obj(1.5, 4.0, 0.5), obj(6.5, 6.0, 0.5), obj(4, 1.5, 0.5)]
         # self.p_list = [obj(7.0, 1.0, 0.5), obj(1.0, 7.0, 0.5)]
-        self.p_list = [obj(4.0, 4.0, 0.5), obj(8.0, 12.0, 0.5), obj(12.0, 4.0, 0.5)]
+        self.p_list = [obj(4.0, 4.0, 0.5), obj(12.0, 4.0, 0.5), obj(8.0, 12.0, 0.5)]
         # self.obstacle_list = [obstacle("square", 8.0, 3.0, 2.0)]
         self.obstacle_list = []
         # virtual avator configure, x, y, orientation
@@ -124,12 +124,10 @@ class PassiveHapticsEnv(object):
                 break
             self.vPathUpdate()
             signal = self.physical_step(gt, gr, gc)  # steering the physical env using the actions
-            # signal = self.physical_step_eval(gt, gr, gc)
             self.time_step += 1
             
             if not signal: # Collide the boundary 
                 reward = -PENALTY
-                # signal = True
                 break                           
             elif ep == 0:                                                      
                 reward = self.get_reward()                  # Only compute reward once due to the action repeat strategy
@@ -147,9 +145,7 @@ class PassiveHapticsEnv(object):
             bad_mask = 1
             self.reset()
             return obs, ret_reward, [1], [bad_mask]
-        # if self.v_step_pointer >= len(self.v_path) - 1:
-        #     self.reset()
-        #     return obs, ret_reward, [1], [0]
+
         elif signal and self.v_step_pointer >= len(self.v_path) - 1: # successfully end one episode, get the final reward
             self.reset()
             return obs, ret_reward, [1], [0]
@@ -165,14 +161,11 @@ class PassiveHapticsEnv(object):
         delta_dis = VELOCITY / gt
         delta_curvature = gc * delta_dis
         delta_rotation = self.delta_direction_per_iter / gr
-        self.o_p = norm(self.o_p + delta_curvature + delta_rotation)
         self.x_p = self.x_p + torch.cos(torch.Tensor([self.o_p])) * delta_dis
         self.y_p = self.y_p + torch.sin(torch.Tensor([self.o_p])) * delta_dis
-        tmp_x = self.x_p + torch.cos(self.o_p) * delta_dis
-        tmp_y = self.y_p + torch.sin(self.o_p) * delta_dis
-        if outbound(tmp_x, tmp_y) or self.insideObstacle(tmp_x, tmp_y):
+        if outbound(self.x_p, self.y_p) or self.insideObstacle(self.x_p, self.y_p):
             return False
-        
+        self.o_p = norm(self.o_p + delta_curvature + delta_rotation)
         return True
 
     def insideObstacle(self, tmp_x, tmp_y):
@@ -402,8 +395,10 @@ class PassiveHapticsEnv(object):
         # d2 = distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[v].x/WIDTH_ALL, self.v_list[v].y/  WIDTH_ALL)
         d1 = distance(self.x_p, self.y_p, self.p_list[p].x, self.p_list[p].y)
         d2 = distance(self.x_v, self.y_v, self.v_list[v].x, self.v_list[v].y)
-        
         return toTensor(abs(d1 - d2) / (WIDTH_ALL * 1.41))
+        # d1 = distance(self.x_p/WIDTH,     self.y_p/HEIGHT,     self.p_list[p].x/WIDTH,     self.p_list[p].y/  HEIGHT)
+        # d2 = distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[v].x/WIDTH_ALL, self.v_list[v].y/  WIDTH_ALL)
+        # return toTensor(abs(d1 - d2))
 
 
     def get_reward_wall(self):

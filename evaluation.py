@@ -77,7 +77,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
     gt     = np.mean(gt_list).item()
     gr     = np.mean(gr_list).item()
     gc     = np.mean(gc_list).item()
-    touch_cnt = touch_cnt / num
+    touch_cnt = touch_cnt 
     pde_list = sorted(pde_list)
     # print(pde_list)
     pde_med = np.median(pde_list)
