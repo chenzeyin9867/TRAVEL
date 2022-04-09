@@ -16,6 +16,9 @@ from utils import plot_hist, drawPath
 from envs.arguments import get_args
 import numpy as np
 
+
+
+
 def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
     gamma, stack_frame_num, path = kwargs['gamma'], kwargs['stack_frame'], kwargs['data']
     env = PassiveHapticsEnv(gamma,  stack_frame_num, path,  eval=True)
@@ -36,6 +39,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
     evalType    = kwargs['path_type']
     x_l, y_l, vx_l, vy_l = [], [], [], []
     pde_list = []
+    reset_list = []
     
     env.reset()
     for t in trange(0, num):
@@ -63,7 +67,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
         vx_l.append(vx)
         vy_l.append(vy)
         pde_list.extend(pe_l)
-        
+        reset_list.append(c)
         
         
     
@@ -78,6 +82,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
     gr     = np.mean(gr_list).item()
     gc     = np.mean(gc_list).item()
     touch_cnt = touch_cnt 
+    pde_store = pde_list
     pde_list = sorted(pde_list)
     # print(pde_list)
     pde_med = np.median(pde_list)
@@ -87,13 +92,15 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
         "gt"    : gt,     "gr"  : gr ,   "gc"  : gc,
         "x"     : x_l,    "y"   : y_l,   "vx"  : vx_l,    "vy"     : vy_l   ,
         "touch_cnt": touch_cnt,
-        "gt_l"  :gt_list, "gr_l": gr_list, "gc_l": gc_list
+        "gt_l"  :gt_list, "gr_l": gr_list, "gc_l": gc_list,
+        "pde_list" : pde_store, "reset_list" : reset_list
     }
     
     return rets
 
 
 if __name__ == '__main__':
+    np.set_printoptions(suppress=True)
     parser = argparse.ArgumentParser(description='RL')
     args = get_args()
     # args = parser.parse_args()
@@ -146,7 +153,15 @@ if __name__ == '__main__':
     print(args.env_name)
     print("With Alignment:\tPDE_MEAN:%.4f\tPDE_MED:%.4f\treset:%d\tDistance_per_reset:%.2f" % (rets["pde"], rets["pde_med"], rets["collide"], rets["dis_reset"]))
     print("No   Alignment:\tPDE_MEAN:%.4f\tPDE_MED:%.4f\treset:%d\tDistance_per_reset:%.2f" % (ret["pde"],  ret["pde_med"] , ret["collide"],  ret["dis_reset"] ))
- 
+    
+    
+    dir = "statistic_result"
+    if not os.path.exists("statistic_result"):
+        os.makedirs(dir)
+    np.savetxt(os.path.join(dir, str(WIDTH) + "_" + str(HEIGHT) + "_phrl_pde.txt"), rets["pde_list"], fmt="%.02f")
+    np.savetxt(os.path.join(dir, str(WIDTH) + "_" + str(HEIGHT) + "_none_pde.txt"), ret["pde_list"], fmt="%.02f")
+    np.savetxt(os.path.join(dir, str(WIDTH) + "_" + str(HEIGHT) + "_phrl_reset.txt"), rets["reset_list"], fmt="%.02f")
+    np.savetxt(os.path.join(dir, str(WIDTH) + "_" + str(HEIGHT) + "_none_reset.txt"), ret["reset_list"], fmt="%.02f")
     # reward, r_none, distance_physical, dis_nosrl, angle_srl, angle_none, flag, r_1, r_2, r_3, std_list1, std_list2, std_list3, gt_list, gr_list, gc_list, collide, collide_, collide_frank = PassiveHapticRdwEvaluateFrank(actor_critic, args.seed,
     #                                      1, 0.99, None, None, 10, None, 0, args.env_name, False, num, draw, evalType=2)
     # len = len(r_1)

@@ -5,6 +5,8 @@ import matplotlib.patches as patches
 from tqdm import trange
 from envs.envs_general import *
 
+color_dict = {1: "r", 2: "g"}
+
 def drawPath(vx_l, vy_l, x_none_l, y_none_l, x_l, y_l, env, args, epoch):
     '''
         :vx, vy: virtual path
@@ -22,15 +24,16 @@ def drawPath(vx_l, vy_l, x_none_l, y_none_l, x_l, y_l, env, args, epoch):
                 plt_none.set_title('virtual')
                 plt_srl.set_title('physical')
                 if len(env.obstacle_list) > 0:
-                    r = env.obstacle_list[0].r
-                    plt_srl.add_patch(
-                        patches.Rectangle(
-                            (env.obstacle_list[0].x - r,env.obstacle_list[0].y - r),
-                            env.obstacle_list[0].r * 2,
-                            env.obstacle_list[0].r * 2,
-                            color='k'
+                    for i in range(len(env.obstacle_list)):
+                        r = env.obstacle_list[i].r
+                        plt_srl.add_patch(
+                            patches.Rectangle(
+                                (env.obstacle_list[i].x - r,env.obstacle_list[i].y - r),
+                                env.obstacle_list[i].r * 2,
+                                env.obstacle_list[i].r * 2,
+                                color='k'
+                            )
                         )
-                    )
                 plt_srl.axis('scaled')
                 plt_srl.axis([0.0, WIDTH, 0.0, HEIGHT])
                 plt_none.axis('scaled')
@@ -43,11 +46,10 @@ def drawPath(vx_l, vy_l, x_none_l, y_none_l, x_l, y_l, env, args, epoch):
                 plt_srl.legend(loc='best')
                 
                 for obj_ind in range(len(env.v_list)):
-                    plt_none.scatter(env.v_list[obj_ind].x, env.v_list[obj_ind].y, color='gold')
-                    plt_none.scatter(env.v_list[obj_ind].x, env.v_list[obj_ind].y, s=200, marker="o", label='target object', edgecolors='orange', linewidths=0.5, )
+                    # print("virtual: " ,env.v_list[obj_ind].group)
+                    plt_none.scatter(env.v_list[obj_ind].x, env.v_list[obj_ind].y, s=200, c=color_dict[env.v_list[obj_ind].group], marker="s", label='target object', edgecolors='orange', linewidths=0.5, )
                 for obj_ind in range(len(env.p_list)):
-                    plt_srl.scatter(env.p_list[obj_ind].x, env.p_list[obj_ind].y, color='gold')
-                    plt_srl.scatter(env.p_list[obj_ind].x, env.p_list[obj_ind].y, s=200, marker="o", label='target object', edgecolors='orange', linewidths=0.5, )
+                    plt_srl.scatter(env.p_list[obj_ind].x, env.p_list[obj_ind].y, s=200, marker="s", c=color_dict[env.p_list[obj_ind].group], label='target object', edgecolors='orange', linewidths=0.5, )
    
                 
  

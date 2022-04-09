@@ -15,10 +15,16 @@ from running_mean_std import RunningMeanStd
 
 REWARD_SCALE = False
 VELOCITY = 1.0 / 50.0
+# HEIGHT, WIDTH = 4, 4
+# HEIGHT_ALL, WIDTH_ALL = 6, 6
+HEIGHT, WIDTH = 6, 6
+HEIGHT_ALL, WIDTH_ALL = 8, 8
 # HEIGHT, WIDTH = 8 , 8
 # HEIGHT_ALL, WIDTH_ALL = 10.0, 10.0
-HEIGHT, WIDTH = 16 , 16
-HEIGHT_ALL, WIDTH_ALL = 20.0, 20.0
+# HEIGHT, WIDTH = 16 , 16
+# HEIGHT_ALL, WIDTH_ALL = 20.0, 20.0
+# HEIGHT, WIDTH = 12 , 12
+# HEIGHT_ALL, WIDTH_ALL = 15.0, 15.0
 # HEIGHT, WIDTH = 12, 12
 # HEIGHT_ALL, WIDTH_ALL = 12, 17
 FRAME_RATE = 50
@@ -60,19 +66,66 @@ class PassiveHapticsEnv(object):
     # configure the physical and virtual space
     def configure_space(self):
         # virtual space configure
-        self.v_list = [obj(5.0, 5.0, 0.5), obj(15, 5, 0.5), obj(5, 15, 0.5), obj(15, 15, 0.5)]
-        # self.v_list = [obj(1.0, 1.0, 0.5)]
-        # self.v_list = [obj(2.5, 2.5, 0.5), obj(7.5,2.5, 0.5), obj(2.5,7.5, 0.5), obj(7.5, 7.5, 0.5)]
-        # self.v_list = [obj(2.0, 2.0, 0.5), obj(8.0,2.0, 0.5), obj(2.0,8.0, 0.5), obj(8.0, 8.0, 0.5)]
-        # self.v_list = [obj(10.0, 10.0, 0.5)]
-        # self.v_list = [obj(3.0, 2.0, 0.5), obj(3.0, 10.0, 0.5), obj(14.0, 2.0, 0.5)]
+        # self.v_list = [obj(5.0, 5.0, 0.5), obj(15, 5, 0.5), obj(5, 15, 0.5), obj(15, 15, 0.5)]
+        
+        # h6w6 2
+        # self.v_list = [obj(1.0, 1.0, 0.5, 1), obj(5.0, 5.0, 0.5, 1)] 
+        # self.p_list = [obj(0.5, 3.5, 0.5, 1), obj(3.5, 2.0, 0.5, 1), obj(2.0, 0.5, 0.5, 1)] 
+        
+        # h8w8 1
+        # self.v_list = [obj(1.0, 1.0, 0.5, 1)] 
+        # self.p_list = [obj(1.0, 5.0, 0.5, 1), obj(5.0, 1.0, 0.5, 1)] 
+        
+        # h8w8 
+        # self.v_list = [obj(2.0, 2.0, 0.5, 1), obj(6.0, 2.0, 0.5, 1), obj(2.0, 6.0, 0.5, 1), obj(6.0, 6.0, 0.5, 1)] 
+        # self.p_list = [obj(1.0, 1.0, 0.5, 1), obj(5.0, 1.0, 0.5, 1), obj(3.0, 5.0, 0.5, 1)] 
+        
+        # h8w8_2 
+        # self.v_list = [obj(4.0, 1.0, 0.5, 1), obj(4.0, 7.0, 0.5, 1)] 
+        # self.p_list = [obj(1.0, 5.0, 0.5, 1), obj(5.0, 1.0, 0.5, 1)] 
+        # self.p_list = [obj(1.0, 1.0, 0.5, 1), obj(5.0, 1.0, 0.5, 1), obj(3.0, 5.0, 0.5, 1)]
+        
+        # h10w10 
+        # self.v_list = [obj(1.0, 1.0, 0.5, 1)] 
+        # self.p_list = [obj(7.0, 1.0, 0.5, 1), obj(1.0, 7.0, 0.5, 1)] 
+        
+        # h10w10 2
+        self.v_list = [obj(1.0, 1.0, 0.5, 1), obj(1.0, 9.0, 0.5, 1)] 
+        self.p_list = [obj(7.0, 1.0, 0.5, 1), obj(1.0, 7.0, 0.5, 1)] 
+        
+        # h10w10 3
+        # self.v_list = [obj(2.0, 2.0, 0.5, 1), obj(8.0, 2.0, 0.5, 1), obj(5.0, 8.0, 0.5, 1)] 
+        # self.p_list = [obj(1.0, 7.0, 0.5, 1), obj(4.0, 1.0, 0.5, 1)] 
+        
+        # h12 w17
+        # self.v_list = [obj(3.0, 2.0, 0.5, 1), obj(3.0, 10.0, 0.5, 1), obj(14.0, 2.0, 0.5,  1)]
+        # self.p_list = [obj(6.0, 2.0, 0.5, 1), obj(2.0, 10.0, 0.5, 1), obj(10.0, 10.0, 0.5, 1)]
+               
+        # h15w15 2
+        # self.v_list = [obj(2.0, 13.0, 0.5, 1), obj(13.0, 2.0, 0.5, 1)]
+        # self.p_list = [obj(6.0, 2.0, 0.5, 1), obj(2.0, 8.0, 0.5, 1)]
+        
+        # h20 w20
+        # self.v_list = [obj(5.0, 5.0, 0.5, 1), obj(15, 5, 0.5, 1), obj(5, 15, 0.5, 1), obj(15, 15, 0.5, 1)]
+        # self.p_list = [obj(4.0, 4.0, 0.5, 1), obj(12, 4, 0.5, 1), obj(8, 12, 0.5, 1)]
+        
+        # h20 w20 group
+        # self.v_list = [obj(5.0, 5.0, 0.5, 2), obj(15, 5, 0.5, 1), obj(5, 15, 0.5, 1), obj(15, 15, 0.5, 2)]
+        # self.p_list = [obj(4.0, 4.0, 0.5, 2), obj(12, 4, 0.5, 2), obj(4, 12, 0.5, 1), obj(12, 12, 0.5, 1)]
+        
+        # h20 w20 group 2
+        # self.v_list = [obj(5.0, 5.0, 0.5, 1), obj(15, 5, 0.5, 2), obj(5, 15, 0.5, 1), obj(15, 15, 0.5, 1)]
+        # self.p_list = [obj(4.0, 4.0, 0.5, 2), obj(12, 4, 0.5, 1), obj(4, 12, 0.5, 1), obj(12, 12, 0.5, 2)]
+
+        
         # physical space configure
         # p_height, p_width = 10.0, 10.0
         # self.p_list = [obj(6.0, 2.0, 0.5), obj(2.0, 10.0, 0.5), obj(10.0, 10.0, 0.5)]
         # self.p_list = [obj(1.5, 4.0, 0.5), obj(6.5, 6.0, 0.5), obj(4, 1.5, 0.5)]
-        # self.p_list = [obj(7.0, 1.0, 0.5), obj(1.0, 7.0, 0.5)]
-        self.p_list = [obj(4.0, 4.0, 0.5), obj(12.0, 4.0, 0.5), obj(8.0, 12.0, 0.5)]
+        
+        # self.p_list = [obj(4.0, 4.0, 0.5), obj(12.0, 4.0, 0.5), obj(8.0, 12.0, 0.5)]
         # self.obstacle_list = [obstacle("square", 8.0, 3.0, 2.0)]
+        # self.obstacle_list = [obstacle("square", 8.0, 2.0, 1.0), obstacle("square", 2.0, 8.0, 1.0), obstacle("square", 14.0, 8.0, 1.0)]
         self.obstacle_list = []
         # virtual avator configure, x, y, orientation
         self.pos_list = [[0, HEIGHT_ALL/2, 0], [WIDTH_ALL/2, 0, pi/2], 
@@ -124,6 +177,7 @@ class PassiveHapticsEnv(object):
                 break
             self.vPathUpdate()
             signal = self.physical_step(gt, gr, gc)  # steering the physical env using the actions
+            # signal = self.physical_step_eval(gt, gr, gc)
             self.time_step += 1
             
             if not signal: # Collide the boundary 
@@ -149,6 +203,9 @@ class PassiveHapticsEnv(object):
         elif signal and self.v_step_pointer >= len(self.v_path) - 1: # successfully end one episode, get the final reward
             self.reset()
             return obs, ret_reward, [1], [0]
+        # if self.v_step_pointer >= len(self.v_path) - 1:
+            # self.reset()
+            # return obs, ret_reward, [1], [0]
         else:
             return obs, ret_reward, [0], [0]
 
@@ -187,8 +244,8 @@ class PassiveHapticsEnv(object):
         tmp_x = self.x_p + torch.cos(self.o_p) * delta_dis
         tmp_y = self.y_p + torch.sin(self.o_p) * delta_dis
         if outbound(tmp_x, tmp_y) or self.insideObstacle(tmp_x, tmp_y):
-            # self.o_p = norm(self.o_p + PI)
-            self.o_p = self.compute_dir_to_obj()
+            self.o_p = norm(self.o_p + PI)
+            # self.o_p = self.compute_dir_to_obj()
             self.obs.extend(self.num_frame_stack * self.get_obs())
             return False
         else:
@@ -329,7 +386,17 @@ class PassiveHapticsEnv(object):
 
     def nearest_obj(self):
         min_dis = 1000
+        v_ind = -1
+        min_dis_v = 1000
+        for i in range(len(self.v_list)):
+            x_t, y_t = self.v_list[i].x, self.v_list[i].y
+            if distance(x_t, y_t, self.x_v, self.y_v) < min_dis_v:
+                min_dis_v = distance(x_t, y_t, self.x_v, self.y_v)
+                v_ind = i
+        
         for i in range(len(self.p_list)):
+            if self.p_list[i].group != self.v_list[v_ind].group:
+                    continue
             x_t, y_t = self.p_list[i].x, self.p_list[i].y
             min_dis = min(min_dis, distance(x_t, y_t, self.x_p, self.y_p))
         return min_dis
@@ -357,6 +424,7 @@ class PassiveHapticsEnv(object):
         dis_obj_v = []
         ori_obj_v = []
         unalign_obj_v = []
+
         for i in range(len(self.v_list)):
             dis_obj_v.append(distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[i].x/WIDTH_ALL, self.v_list[i].y/HEIGHT_ALL)) # dis from v_avator to each v_obj
             ori_obj_v.append(abs(delta_angle_norm(self.o_v - np.arctan2(self.v_list[i].y - self.y_v, self.v_list[i].x - self.x_v))))
@@ -365,7 +433,7 @@ class PassiveHapticsEnv(object):
         # possibility to goto each V_obj 
         sum_possibility = sum(unalign_obj_v)
         possibility_list = [x / sum_possibility.item() for x in unalign_obj_v]
-        
+        # possibility_list = [1.0 / len(self.v_list) for _ in self.v_list]  # mean manner
         # choose physical prop for each virt prop
         self.p_prop_list = [0 for _ in range(len(self.v_list))]
         penalty = 0
@@ -375,11 +443,12 @@ class PassiveHapticsEnv(object):
             for j in range(len(self.p_list)):
                 d = self.get_reward_distance(i, j)
                 o = self.get_reward_orientation(i, j)
+                grp_diff = 10.0 if self.v_list[i].group != self.p_list[j].group else 0
                 intersect = 0
                 # intersect = self.get_reward_intersect(j)
                 # print(o, d)
-                if (o + 3 *d + intersect) < unalign_min:
-                    unalign_min = o + 3 * d + intersect
+                if (o + 3 * d + intersect + grp_diff) < unalign_min:
+                    unalign_min = o + 3 * d + intersect + grp_diff
                     p_obj_ind = j
             self.p_prop_list[i] = p_obj_ind
             penalty += unalign_min * possibility_list[i]
@@ -393,12 +462,12 @@ class PassiveHapticsEnv(object):
     def get_reward_distance(self, v, p):
         # d1 = distance(self.x_p/WIDTH,     self.y_p/HEIGHT,     self.p_list[p].x/WIDTH,     self.p_list[p].y/  HEIGHT)
         # d2 = distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[v].x/WIDTH_ALL, self.v_list[v].y/  WIDTH_ALL)
-        d1 = distance(self.x_p, self.y_p, self.p_list[p].x, self.p_list[p].y)
-        d2 = distance(self.x_v, self.y_v, self.v_list[v].x, self.v_list[v].y)
-        return toTensor(abs(d1 - d2) / (WIDTH_ALL * 1.41))
-        # d1 = distance(self.x_p/WIDTH,     self.y_p/HEIGHT,     self.p_list[p].x/WIDTH,     self.p_list[p].y/  HEIGHT)
-        # d2 = distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[v].x/WIDTH_ALL, self.v_list[v].y/  WIDTH_ALL)
-        # return toTensor(abs(d1 - d2))
+        # d1 = distance(self.x_p, self.y_p, self.p_list[p].x, self.p_list[p].y)
+        # d2 = distance(self.x_v, self.y_v, self.v_list[v].x, self.v_list[v].y)
+        # return toTensor(abs(d1 - d2) / (WIDTH_ALL * 1.41))
+        d1 = distance(self.x_p/WIDTH,     self.y_p/HEIGHT,     self.p_list[p].x/WIDTH,     self.p_list[p].y/  HEIGHT)
+        d2 = distance(self.x_v/WIDTH_ALL, self.y_v/HEIGHT_ALL, self.v_list[v].x/WIDTH_ALL, self.v_list[v].y/  WIDTH_ALL)
+        return toTensor(abs(d1 - d2))
 
 
     def get_reward_wall(self):
@@ -568,10 +637,12 @@ def distance(x, y, a, b):
     return math.sqrt((x - a) * (x - a) + (y - b) * (y - b))
 
 class obj:
-    def __init__(self, x, y, r):
+    def __init__(self, x, y, r, grp):
         self.x = x
         self.y = y
         self.r = r
+        self.group = grp
+        
         
 
 # Obstacle in environment, have shape of rectangle and circle

@@ -20,13 +20,13 @@ class obj:
         self.r = r
 # virtual space configure
 # v_height, v_width = 12.0, 17.0
-v_height, v_width = 6.0, 6.0
-# v_height, v_width = 15.0, 15.0
+v_height, v_width = 8.0, 8.0
+# v_height, v_width = 10.0, 10.0
 # v_obj_list = [obj(10.0, 10.0, 0.5)]
 # v_obj_list = [obj(2.0, 2.0, 0.5), obj(8.0, 2.0, 0.5), obj(2.0, 9.0, 0.5), obj(8.0, 9.0, 0.5)]
 # v_obj_list = [obj(2.5, 2.5, 0.5), obj(7.5, 2.5, 0.5), obj(2.5, 7.5, 0.5), obj(7.5, 7.5, 0.5)]
 # v_obj_list = [obj(5.0, 5.0, 0.5), obj(15, 5, 0.5), obj(5, 15, 0.5), obj(15, 15, 0.5)]
-v_obj_list = [obj(1.0, 1.0, 0.5), obj(5, 5, 0.5)]
+v_obj_list = [obj(1.0, 1.0, 0.5)]
 # v_obj_list = [obj(3.0, 2.0, 0.5), obj(3.0, 10.0, 0.5), obj(14.0, 2.0, 0.5)]
 # physical space configure
 p_height, p_width = 10.0, 10.0
@@ -41,7 +41,7 @@ pos_list = [[0, v_height/2, 0], [v_width/2, 0, pi/2], [v_width, v_height/2, pi],
 velocity = 1.0 / 50.0
 frame_rate = 50
 step_low = int(0.5 / velocity)
-step_high = int(1.5 / velocity)
+step_high = int(3.5 / velocity)
 
 
 parser = argparse.ArgumentParser(description="training path generation.")
@@ -71,7 +71,7 @@ def outbound(x, y):
 if __name__ == '__main__':
     result = []
     len_ = []
-    dir = os.path.join("./dataset/h6w6_2", "h" + str(int(v_height))+'w'+str(int(v_width)))
+    dir = os.path.join("./waypoint/h8w8_1", "h" + str(int(v_height))+'w'+str(int(v_width)))
     if not os.path.exists(dir):
         os.makedirs(dir)    
     pathnum = 500 if mode == 'eval' else 50000
@@ -84,10 +84,10 @@ if __name__ == '__main__':
         x_s, y_s, o_s = x, y, o
         x_list ,y_list ,o_list, o_delta, tourch_list = [], [], [], [], []
         obj_set = [i for i in range(len(v_obj_list)) ]
-        x_list.append(x)
-        y_list.append(y)
-        o_list.append(o)
-        o_delta.append(0)
+        # x_list.append(x)
+        # y_list.append(y)
+        # o_list.append(o)
+        # o_delta.append(0)
         tourch_list.append(-1)
         iter = 0
         delta_direction_per_iter = 0
@@ -112,6 +112,7 @@ if __name__ == '__main__':
                         delta_direction_per_iter = - delta_direction_per_iter
                     num_change_direction = int(abs(delta_direction / delta_direction_per_iter))
                     current_obj = -1
+                    # x_list.append(x + )
                 else:
                     # choose a unselected obj
                     obj_ind = choice(obj_set)
