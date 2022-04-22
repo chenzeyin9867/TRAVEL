@@ -17,14 +17,14 @@ REWARD_SCALE = False
 VELOCITY = 1.0 / 50.0
 # HEIGHT, WIDTH = 4, 4
 # HEIGHT_ALL, WIDTH_ALL = 6, 6
-HEIGHT, WIDTH = 6, 6
-HEIGHT_ALL, WIDTH_ALL = 8, 8
+# HEIGHT, WIDTH = 6, 6
+# HEIGHT_ALL, WIDTH_ALL = 8, 8
 # HEIGHT, WIDTH = 8 , 8
 # HEIGHT_ALL, WIDTH_ALL = 10.0, 10.0
 # HEIGHT, WIDTH = 16 , 16
 # HEIGHT_ALL, WIDTH_ALL = 20.0, 20.0
-# HEIGHT, WIDTH = 12 , 12
-# HEIGHT_ALL, WIDTH_ALL = 15.0, 15.0
+HEIGHT, WIDTH = 12 , 12
+HEIGHT_ALL, WIDTH_ALL = 15.0, 15.0
 # HEIGHT, WIDTH = 12, 12
 # HEIGHT_ALL, WIDTH_ALL = 12, 17
 FRAME_RATE = 50
@@ -90,8 +90,8 @@ class PassiveHapticsEnv(object):
         # self.p_list = [obj(7.0, 1.0, 0.5, 1), obj(1.0, 7.0, 0.5, 1)] 
         
         # h10w10 2
-        self.v_list = [obj(1.0, 1.0, 0.5, 1), obj(1.0, 9.0, 0.5, 1)] 
-        self.p_list = [obj(7.0, 1.0, 0.5, 1), obj(1.0, 7.0, 0.5, 1)] 
+        # self.v_list = [obj(1.0, 1.0, 0.5, 1), obj(1.0, 9.0, 0.5, 1)] 
+        # self.p_list = [obj(1.0, 1.0, 0.5, 1), obj(7.0, 7.0, 0.5, 1)] 
         
         # h10w10 3
         # self.v_list = [obj(2.0, 2.0, 0.5, 1), obj(8.0, 2.0, 0.5, 1), obj(5.0, 8.0, 0.5, 1)] 
@@ -104,6 +104,10 @@ class PassiveHapticsEnv(object):
         # h15w15 2
         # self.v_list = [obj(2.0, 13.0, 0.5, 1), obj(13.0, 2.0, 0.5, 1)]
         # self.p_list = [obj(6.0, 2.0, 0.5, 1), obj(2.0, 8.0, 0.5, 1)]
+        
+        # h15w15_2_new
+        self.v_list = [obj(3.0, 12.0,  0.5, 1), obj(12.0, 3.0,  0.5, 1)]
+        self.p_list = [obj(6.0,  2.0,  0.5, 1), obj(6.0,  10.0, 0.5, 1)]
         
         # h20 w20
         # self.v_list = [obj(5.0, 5.0, 0.5, 1), obj(15, 5, 0.5, 1), obj(5, 15, 0.5, 1), obj(15, 15, 0.5, 1)]
@@ -297,6 +301,7 @@ class PassiveHapticsEnv(object):
 
         self.x_v, self.y_v, self.o_v, self.delta_direction_per_iter, _ = self.v_path[self.v_step_pointer]
         self.x_p, self.y_p, self.o_p = self.init_eval_state(ind)
+        # self.o_p = self.o_v
         # self.init_eval_state(ind)
         
         i = self.v_step_pointer
