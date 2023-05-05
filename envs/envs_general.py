@@ -3,7 +3,7 @@ import os
 from site import USER_SITE
 import gym
 import numpy as np
-from sqlalchemy import true
+# from sqlalchemy import true
 import torch
 from gym.spaces.box import Box
 from envs.distributions import FixedNormal
@@ -50,6 +50,7 @@ class PassiveHapticsEnv(object):
         self.delta_direction_per_iter = 0
         self.reward = 0.0
         self.path_cnt = 0               # path index for current iteration
+        self.action_cnt = 0
 
         self.r1, self.r2, self.r3 = [], [], []
 
@@ -155,6 +156,7 @@ class PassiveHapticsEnv(object):
         self.v_path = self.path_file[self.path_cnt]
         self.path_cnt += 1                                   # next v_path
         self.path_cnt = self.path_cnt % len(self.path_file)  # using the training data iteratively
+        # self.action_cnt = 0
 
         # Zero the path pointer
         self.v_step_pointer = 0
@@ -263,7 +265,8 @@ class PassiveHapticsEnv(object):
     """
     def init_eval_state(self, ind, evalType=0):
         # print(ind)
-        return WIDTH / 2, HEIGHT / 2, (ind % 100)/ 100 * 2 * pi - pi
+        # return WIDTH / 2, HEIGHT / 2, (ind % 100)/ 100 * 2 * pi - pi
+        return 4 + 4 * float(ind % 100) / 100.0, 4 + 4.0 * float(ind % 100) / 100.0, (ind % 100) / 100 * 2 * pi - pi
         # self.o_p = self.compute_dir_to_obj()
 
 

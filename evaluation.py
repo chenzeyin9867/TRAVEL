@@ -15,7 +15,8 @@ from envs.model import Policy
 from utils import plot_hist, drawPath
 from envs.arguments import get_args
 import numpy as np
-
+import time
+import sys
 
 
 
@@ -40,7 +41,7 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
     x_l, y_l, vx_l, vy_l = [], [], [], []
     pde_list = []
     reset_list = []
-    
+    total_decision_step = 0
     env.reset()
     for t in trange(0, num):
         env.reset()
@@ -52,9 +53,11 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
             gt_list.extend(gt)
             gr_list.extend(gr)
             gc_list.extend(gc)
+            total_decision_step += len(env.v_path)
 
         else: # None
-            ret, pe, pe_l, oe, t_cnt, _, _, _ ,x, y, vx, vy, _, _, _, c, dis = env.step_specific_path(None, None, t, gain=False)    
+            ret, pe, pe_l, oe, t_cnt, _, _, _ ,x, y, vx, vy, _, _, _, c, dis = env.step_specific_path(None, None, t, gain=False)  
+            total_decision_step += len(env.v_path)  
   
         reward += ret
         collide += c     
@@ -93,7 +96,8 @@ def phrlEvaluate(actor_critic, running_mean_std, epoch, test=False, **kwargs):
         "x"     : x_l,    "y"   : y_l,   "vx"  : vx_l,    "vy"     : vy_l   ,
         "touch_cnt": touch_cnt,
         "gt_l"  :gt_list, "gr_l": gr_list, "gc_l": gc_list,
-        "pde_list" : pde_store, "reset_list" : reset_list
+        "pde_list" : pde_store, "reset_list" : reset_list,
+        "decision_cnt": total_decision_step
     }
     
     return rets
@@ -106,6 +110,7 @@ if __name__ == '__main__':
     # args = parser.parse_args()
     # param_name = os.path.join(args.load_param)
     print('loading the ————', args.load_epoch)
+
     envs = PassiveHapticsEnv(args.gamma, args.stack_frame, eval=True, path=args.data)
     # Loading the actor-critc model
     actor_critic = Policy(
@@ -126,7 +131,7 @@ if __name__ == '__main__':
     # actor_critic = torch.load('./trained_models/' + args.env_name + '/%d.pth' % args.load_epoch)
     print("Loading the " + args.env_name + '/_%d.pt' % args.load_epoch + ' to train')
     # num = 500
-    # draw = True
+    # draw = True 
     draw = False
     print('running ', args.test_frames, " paths:")
     # reward, r_none, distance_physical, dis_nosrl, angle_srl, angle_none, flag, r_1, r_2,std_list1, std_list2, std_list3, gt_list, gr_list, gc_list, collide, collide_ = PassiveHapticRdwEvaluate(actor_critic, args.seed,
@@ -141,7 +146,11 @@ if __name__ == '__main__':
     # print("SRL:\tdistance:{:.2f}\t{:2f}|{:.2f}|{:.2f}\tanglr:{:.2f}\t".format(distance_physical/num, r_1[0], r_1[int(num/2)], r_1[num-1], angle_srl.item()/num))
     # print("None:\tdistance:{:.2f}\t{:2f}|{:.2f}|{:.2f}\tanglr:{:.2f}\t".format(dis_nosrl/num, r_2[0], r_2[int(num/2)], r_2[num-1], angle_none.item()/num))
     params = args.__dict__
+    t_start = time.time()
     rets  = phrlEvaluate(actor_critic, None, 0, True, **params)
+    t_end = time.time()
+    print("Total_Forward:%d  TIme:%.2f" %( rets["decision_cnt"], t_end - t_start))
+    # sys.exit(0)
     ret   = phrlEvaluate(None, None, 0, test=True, **params)
     
     log_dir = os.path.join("result_dir", args.env_name)
@@ -165,7 +174,7 @@ if __name__ == '__main__':
     # reward, r_none, distance_physical, dis_nosrl, angle_srl, angle_none, flag, r_1, r_2, r_3, std_list1, std_list2, std_list3, gt_list, gr_list, gc_list, collide, collide_, collide_frank = PassiveHapticRdwEvaluateFrank(actor_critic, args.seed,
     #                                      1, 0.99, None, None, 10, None, 0, args.env_name, False, num, draw, evalType=2)
     # len = len(r_1)
-    # left = int(len/4)
+    # left = int(len/4)sd
     # right = int(len*3/4)
     # print("TYPE3:")
     # print("SRL:\tdistance:{:.2f}\t{:2f}|{:.2f}|{:.2f}\tanglr:{:.2f}\tIQR:{:.2f}".format(distance_physical/num, r_1[0], r_1[int(num/2)], r_1[num-1], angle_srl.item()/num,r_1[right]-r_1[left] ), "\tcollide", collide)

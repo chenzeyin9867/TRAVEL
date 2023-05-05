@@ -1,3 +1,0 @@
-3.14：
-    当Reset后采用facemid方案比facevertical要优
-    确认当Gamma=0.8时效果不好，使用gamma=0.99

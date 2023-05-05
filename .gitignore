@@ -107,6 +107,7 @@ trained_models/
 /runs
 /logs
 /plot_result
+/statistic_result
 
 
 *.png
